@@ -10,6 +10,7 @@
 
 // Core Modules ---
 import "server-only"
+import fs from 'fs'
 
 // External Packages ---
 import winston from 'winston'
@@ -57,6 +58,43 @@ class PipelineLogger {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     this.logFilePath = path.join(process.cwd(), 'logs', `pipeline-${timestamp}-${this.sessionId}.log`)
     
+    // Determine if we're in a serverless/production environment where file system access is limited
+    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production'
+    
+    // Configure transports based on environment
+    const transports: winston.transport[] = [
+      new winston.transports.Console({
+        format: winston.format.combine(
+          winston.format.colorize(),
+          winston.format.simple(),
+          winston.format.printf(({ level, message, timestamp, step, type }) => {
+            return `${timestamp} [${level}] 📝 [${step || 'PIPELINE'}] ${type?.toString().toUpperCase()}: ${message}`
+          })
+        )
+      })
+    ]
+
+    // Only add file transport in development or when file system is available
+    if (!isServerless) {
+      try {
+        // Ensure logs directory exists
+        const logsDir = path.join(process.cwd(), 'logs')
+        if (!fs.existsSync(logsDir)) {
+          fs.mkdirSync(logsDir, { recursive: true })
+        }
+        
+        transports.push(
+          new winston.transports.File({ 
+            filename: this.logFilePath,
+            maxsize: 10 * 1024 * 1024, // 10MB max file size
+            maxFiles: 5 // Keep 5 old log files
+          })
+        )
+      } catch (error) {
+        console.warn('Failed to create file transport for logging, using console only:', error)
+      }
+    }
+    
     // Configure Winston logger
     this.logger = winston.createLogger({
       level: 'info',
@@ -66,27 +104,13 @@ class PipelineLogger {
         winston.format.json(),
         winston.format.prettyPrint()
       ),
-      transports: [
-        new winston.transports.File({ 
-          filename: this.logFilePath,
-          maxsize: 10 * 1024 * 1024, // 10MB max file size
-          maxFiles: 5 // Keep 5 old log files
-        }),
-        new winston.transports.Console({
-          format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple(),
-            winston.format.printf(({ level, message, timestamp, step, type }) => {
-              return `${timestamp} [${level}] 📝 [${step || 'PIPELINE'}] ${type?.toString().toUpperCase()}: ${message}`
-            })
-          )
-        })
-      ]
+      transports
     })
 
     this.logger.info('Pipeline Logger initialized', {
       sessionId: this.sessionId,
-      logFilePath: this.logFilePath,
+      logFilePath: isServerless ? 'console-only' : this.logFilePath,
+      environment: isServerless ? 'serverless' : 'development',
       type: 'info',
       message: 'Pipeline Logger initialized'
     })
@@ -226,7 +250,8 @@ class PipelineLogger {
    * Get log file path
    */
   getLogFilePath(): string {
-    return this.logFilePath
+    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production'
+    return isServerless ? 'console-only (serverless environment)' : this.logFilePath
   }
 
   /**
