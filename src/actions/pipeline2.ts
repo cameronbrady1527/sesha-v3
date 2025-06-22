@@ -51,7 +51,7 @@ import type {
 // Configuration
 /* ==========================================================================*/
 
-const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3001";
+const baseUrl = process.env.NEXT_PUBLIC_URL
 
 // Validate API URL
 if (!baseUrl) {

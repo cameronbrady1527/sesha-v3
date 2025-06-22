@@ -37,7 +37,7 @@ const signupSchema = z.object({
 /* ==========================================================================*/
 /* Login Action */
 /* ==========================================================================*/
-export async function login(formData: FormData) {
+export async function login(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
 
   // type-casting here for convenience
@@ -50,7 +50,10 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
-    redirect("/error");
+    return {
+      errors: {},
+      message: error.message || "Failed to sign in. Please check your credentials.",
+    };
   }
 
   revalidatePath("/", "layout");

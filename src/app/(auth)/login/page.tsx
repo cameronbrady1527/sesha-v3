@@ -33,11 +33,19 @@ import Link from "next/link";
  */
 function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(formData: FormData) {
     try {
       setIsLoading(true);
-      await login(formData);
+      setError(null);
+      const result = await login(formData);
+      
+      if (result?.message) {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +62,12 @@ function LoginPage() {
 
       {/* Start of Login Form --- */}
       <form action={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" placeholder="Enter your email" required aria-invalid={false} aria-describedby={undefined} disabled={isLoading} />
@@ -65,7 +79,14 @@ function LoginPage() {
         </div>
 
         <Button type="submit" className="w-full cursor-pointer" disabled={isLoading}>
-          {isLoading ? "Signing in..." : "Sign in"}
+          {isLoading ? (
+            <>
+              <span className="mr-2">Signing in</span>
+              <span className="animate-pulse">...</span>
+            </>
+          ) : (
+            "Sign in"
+          )}
         </Button>
       </form>
       {/* End of Login Form ---- */}
