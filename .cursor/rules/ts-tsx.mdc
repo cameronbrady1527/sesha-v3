@@ -1,0 +1,266 @@
+---
+description: 
+globs: *.tsx,*.ts
+alwaysApply: false
+---
+# TypeScript & TSX Guidelines
+
+**YOU ARE...**: Adopt the mindset of a senior Google engineer—prioritize speed, modularity, simplicity, readability, and consistency so anyone can jump in and immediately understand the code.
+
+Below are clear rules for writing TypeScript (`.ts`) and React TSX (`.tsx`) files that keep codebases consistent, readable, and navigable.
+
+---
+
+## 1. Top‑of‑File Header
+
+- **Purpose**: One‑line description of the file’s goal.
+- **Sections**: List major sections (e.g., Imports, Types, Helpers, Exports).
+- **Delimiter**: Use `/* ==========================================================================*/`.
+
+**TypeScript Example (`.ts`):**
+
+```typescript
+/* ==========================================================================*/
+// service.ts — Next.js service layer: Projects & API Key operations
+/* ==========================================================================*/
+// Purpose: Business-logic wrappers around the DAL
+// Sections: Imports, Types, Helpers, Exports
+```
+
+**TSX Example (`.tsx`):**
+
+```tsx
+/* ==========================================================================*/
+// Button.tsx — Reusable button component
+/* ==========================================================================*/
+// Purpose: Renders a styled button with loading state and click handler
+// Sections: Imports, Props, Component, Styles, Exports
+```
+
+---
+
+## 2. Import Grouping
+
+- **Core Modules** / **React Core** first.
+- **External Packages** next.
+- **Local Files** last.
+- Separate groups with a blank line and mini delimiters.
+
+**TypeScript Example:**
+
+```typescript
+/* ==========================================================================*/
+// Imports
+/* ==========================================================================*/
+
+// Core Modules ------------------------------------------------------------
+import fs from "fs";
+import path from "path";
+
+// External Packages -------------------------------------------------------
+import express from "express";
+
+// Local Files -------------------------------------------------------------
+import { helper } from "./helper";
+```
+
+**TSX Example:**
+
+```tsx
+/* ==========================================================================*/
+// Imports
+/* ==========================================================================*/
+
+// React core ---------------------------------------------------------------
+import React, { useState } from "react";
+
+// External Packages --------------------------------------------------------
+import clsx from "clsx";
+
+// Local Modules ------------------------------------------------------------
+import styles from "./Button.module.css";
+import { Icon } from "../Icon";
+```
+
+---
+
+## 3. Section Comment Blocks
+
+- Use delimiters before each logical block.
+- Omit extra description unless necessary.
+
+**TypeScript Example:**
+
+```typescript
+/* ==========================================================================*/
+// Types and Interfaces
+/* ==========================================================================*/
+interface Project {
+  id: string;
+  name: string;
+}
+```
+
+**TSX Example:**
+
+```tsx
+/* ==========================================================================*/
+// Props Interface
+/* ==========================================================================*/
+interface ButtonProps {
+  loading?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+```
+
+For TSX components, for large content sections, block it in sections like:
+
+```tsx
+{/* Start of Content ------------------------------------------ */}
+<Navbar />
+<CTA />
+<ProvidersWrapper />
+{/* End of Content ---------------------------------------------- */}
+```
+
+---
+
+## 4. Public API Declaration
+
+- **Group exports at bottom**: If a file defines multiple functions, types, or components, avoid exporting each inline. Instead collect all `export` statements at the end under a single block.
+- **Functions**: Use `export function`, not `const`.
+- **Components**: Use `export function` or `export default function` at bottom.
+- **Exports**: Group related exports and list them in one place.
+
+**TypeScript Example:**
+
+```typescript
+function fetchProjectsService(ownerId: string): Promise<Project[]> {
+  // ...implementation...
+}
+
+function deleteProjectService(projectId: string): Promise<void> {
+  // ...implementation...
+}
+
+// Public API Exports
+export { fetchProjectsService, deleteProjectService };
+```
+
+**TSX Example:**
+
+```tsx
+function Button({ loading = false, onClick, children }: ButtonProps) {
+  return (
+    <button className={clsx(styles.button, { [styles.loading]: loading })} disabled={loading} onClick={loading ? undefined : onClick}>
+      {loading ? <Icon name="spinner" /> : children}
+    </button>
+  );
+}
+
+function Spinner() {
+  return <div className={styles.spinner} />;
+}
+
+// Public Component Exports
+export { Button, Spinner };
+```
+
+---
+
+## 5. JSDoc Comments & Descriptions
+
+- **Functions/Components**: One‑line summary + `@param`, `@returns`.
+- **Complex logic**: include `@example`.
+- **Simple utilities**: one‑line comment.
+
+**TypeScript Example (complex):**
+
+```typescript
+/**
+ * formatDate
+ *
+ * Format a Date or ISO string to UTC timestamp.
+ *
+ * @param date - Date object or ISO string
+ * @returns Formatted ISO string in UTC
+ *
+ * @example
+ * const ts = formatDate(new Date());
+ */
+export function formatDate(date: Date | string): string {
+  return new Date(date).toISOString();
+}
+```
+
+**TSX Example (utility):**
+
+```tsx
+/** Spinner
+ *
+ * Renders a loading spinner icon.
+ */
+export function Spinner() {
+  return <div className={styles.spinner} />;
+}
+```
+
+---
+
+## 6. Inline Comments
+
+- For non‑obvious logic or caveats.
+- Mark `// TODO:` or `// FIXME:` clearly.
+
+**Example:**
+
+```tsx
+// Prevent click while loading
+<button disabled={loading} onClick={loading ? undefined : onClick}>...
+```
+
+---
+
+## 7. Naming & Consistency
+
+- **TS**: camelCase for variables, PascalCase for types/classes.
+- **TSX**: PascalCase for components, `Props` suffix for interfaces, `useCamelCase` for hooks.
+
+---
+
+## 8. Formatting & Readability
+
+- Line length \~80–100 chars.
+- 2‑space indentation.
+- Destructure props for clarity.
+- Avoid nested ternaries—extract to variables.
+
+**Example:**
+
+```tsx
+const btnClass = clsx(styles.button, className);
+```
+
+---
+
+## 9. Examples & Usage
+
+- Provide minimal snippets in docs or Storybook.
+
+**Example:**
+
+```md
+<Button loading onClick={save}>Save</Button>
+```
+
+---
+
+## 10. Keep It Concise
+
+- Favor clear code over lengthy comments.
+- Refactor complex logic instead of commenting it.
+
+---
+
+> Following these ensures any TypeScript or TSX file is immediately understandable and consistent across the codebase.
