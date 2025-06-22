@@ -44,7 +44,8 @@ function LoginPage() {
       if (result?.message) {
         setError(result.message);
       }
-    } catch (err) {
+    } catch (e: unknown) {
+      console.error(e);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
