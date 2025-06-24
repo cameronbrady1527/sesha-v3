@@ -12,7 +12,7 @@
 
 // React core ---
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 
 // shadcn/ui components ---
 import { Input } from "@/components/ui/input";
@@ -105,7 +105,7 @@ async function buildDigestRequest(params: {
 function BasicDigestInputs() {
   // Import the Digest Context ----
   const { basic, setBasic, preset, sourceUsage, metadata, canDigest } = useDigest();
-  const router = useRouter();
+  // const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDigestClick = async () => {
@@ -139,7 +139,7 @@ function BasicDigestInputs() {
     };
 
     // Navigate immediately - don't await anything after this
-    router.push(`/library`);
+    // router.push(`/library`);
 
     const request = await buildDigestRequest(requestData);
 

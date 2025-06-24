@@ -169,7 +169,7 @@ export async function getOrgArticlesMetadataPaginated(orgId: number, limit = 50,
     .from(articles)
     .leftJoin(users, eq(articles.createdBy, users.id))
     .where(eq(articles.orgId, orgId))
-    .orderBy(articles.createdAt)
+    .orderBy(desc(articles.createdAt))
     .limit(limit)
     .offset(offset);
 }

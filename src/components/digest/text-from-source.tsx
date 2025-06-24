@@ -38,7 +38,7 @@ import { executeDigestPipeline } from "@/actions/pipeline";
 // Types ---------------------------------------------------------------------
 import type { DigestRequest } from "@/types/digest";
 import type { BlobsCount, LengthRange } from "@/db/schema";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 
 /* ==========================================================================*/
 // Helper Functions
@@ -111,7 +111,7 @@ async function buildDigestRequest(params: {
 
 function TextFromSource() {
   const { basic, preset, sourceUsage, metadata, setSourceUsage, canDigest } = useDigest();
-  const router = useRouter();
+  // const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -195,13 +195,13 @@ function TextFromSource() {
         length: preset.length,
       },
       metadata: {
-        currentVersion: metadata.currentVersion,
+        currentVersion: metadata.currentVersion,  
         orgId: metadata.orgId,
       },
     };
 
     // Navigate immediately - don't await anything after this
-    router.push(`/library`);
+    // router.push(`/library`);
 
     const request = await buildDigestRequest(requestData);
 

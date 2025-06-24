@@ -121,6 +121,8 @@ SOURCE CONTENT (only reference this):
 Description: {{source_description}}
 --
 {{source_text}}
+
+BEFORE YOUR FINAL OUTPUT, ENSURE YOU ADHERE TO THE TARGET WORD COUNT PROVIDED OF {{wordTarget}} WORDS.
 `;
 
 /* ==========================================================================*/
