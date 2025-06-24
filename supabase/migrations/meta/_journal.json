@@ -15,6 +15,27 @@
       "when": 1750568310127,
       "tag": "0001_smiling_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750722547902,
+      "tag": "0002_conscious_skullbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1750724584025,
+      "tag": "0003_optimal_zarda",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1750724734738,
+      "tag": "0004_supreme_magus",
+      "breakpoints": true
     }
   ]
 }

@@ -21,61 +21,24 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 // Icons ---------------------------------------------------------------------
 import { Info, Maximize2, Minimize2, Loader2 } from "lucide-react";
+
+// External Packages ---------------------------------------------------------
+import wordCount from "word-count";
 
 // Context -------------------------------------------------------------------
 import { useDigest } from "./digest-context";
 
 // Local Files ---------------------------------------------------------------
 import { getAuthenticatedUserClient } from "@/lib/supabase/client";
-import { executeDigestPipeline } from "@/actions/pipeline2";
+import { executeDigestPipeline } from "@/actions/pipeline";
 
 // Types ---------------------------------------------------------------------
 import type { DigestRequest } from "@/types/digest";
 import type { BlobsCount, LengthRange } from "@/db/schema";
-
-/* ==========================================================================*/
-// Reset confirmation dialog (reusable tiny component)
-/* ==========================================================================*/
-interface ResetConfirmProps {
-  onConfirm: () => void;
-  children: React.ReactNode;
-}
-function ResetConfirmDialog({ onConfirm, children }: ResetConfirmProps) {
-  const [open, setOpen] = useState(false);
-
-  const handleConfirm = () => {
-    onConfirm();
-    setOpen(false);
-  };
-
-  const handleCancel = () => {
-    setOpen(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Reset Form</DialogTitle>
-          <DialogDescription>Are you sure you want to reset text and options? This action cannot be undone.</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleConfirm}>
-            Reset
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { useRouter } from "next/navigation";
 
 /* ==========================================================================*/
 // Helper Functions
@@ -147,8 +110,8 @@ async function buildDigestRequest(params: {
 /* ==========================================================================*/
 
 function TextFromSource() {
-  const { basic, preset, sourceUsage, metadata, setSourceUsage, resetAll, canDigest } = useDigest();
-
+  const { basic, preset, sourceUsage, metadata, setSourceUsage, canDigest } = useDigest();
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -158,16 +121,12 @@ function TextFromSource() {
   }, [sourceUsage.sourceText]);
 
   /* ------------------------------ helpers ------------------------------ */
-  const countWords = (txt: string) => (txt.trim() === "" ? 0 : txt.trim().split(/\s+/).length);
-  const wordCount = countWords(sourceUsage.sourceText);
-  const maxWords = 30_000;
+  const wordCountValue = wordCount(sourceUsage.sourceText);
+  const maxWords = 50_000;
 
   /* --------------------------- event handlers -------------------------- */
   const handleTextChange = (val: string) => setSourceUsage("sourceText", val);
   const handleExpandToggle = () => setExpanded((p) => !p);
-  const handleReset = () => {
-    resetAll();
-  };
 
   /**
    * handlePaste
@@ -215,46 +174,46 @@ function TextFromSource() {
     if (isLoading) return;
 
     setIsLoading(true);
-    try {
-      const request = await buildDigestRequest({
-        slug: basic.slug,
-        headline: basic.headline,
-        sourceUsage: {
-          description: sourceUsage.description,
-          accredit: sourceUsage.accredit,
-          sourceText: sourceUsage.sourceText,
-          verbatim: sourceUsage.verbatim,
-          primary: sourceUsage.primary,
-        },
-        instructions: {
-          instructions: preset.instructions,
-        },
-        preset: {
-          title: preset.title,
-          blobs: preset.blobs,
-          length: preset.length,
-        },
-        metadata: {
-          currentVersion: metadata.currentVersion,
-          orgId: metadata.orgId,
-        },
-      });
 
-      console.log("🚀 Starting digest pipeline...");
-      const result = await executeDigestPipeline(request);
+    // Build request data synchronously first
+    const requestData = {
+      slug: basic.slug,
+      headline: basic.headline,
+      sourceUsage: {
+        description: sourceUsage.description,
+        accredit: sourceUsage.accredit,
+        sourceText: sourceUsage.sourceText,
+        verbatim: sourceUsage.verbatim,
+        primary: sourceUsage.primary,
+      },
+      instructions: {
+        instructions: preset.instructions,
+      },
+      preset: {
+        title: preset.title,
+        blobs: preset.blobs,
+        length: preset.length,
+      },
+      metadata: {
+        currentVersion: metadata.currentVersion,
+        orgId: metadata.orgId,
+      },
+    };
 
-      if (result.success) {
-        console.log("✅ Pipeline completed successfully:", result);
-        toast.success("Digest completed successfully");
-      } else {
-        console.error("❌ Pipeline failed:", result);
-        toast.error("Digest failed");
-      }
-    } catch (error) {
-      console.error("💥 Failed to execute digest pipeline:", error);
-      toast.error("Failed to execute digest pipeline");
-    } finally {
-      setIsLoading(false);
+    // Navigate immediately - don't await anything after this
+    router.push(`/library`);
+
+    const request = await buildDigestRequest(requestData);
+
+    console.log("🚀 Starting digest pipeline...");
+    const result = await executeDigestPipeline(request);
+
+    if (result.success) {
+      console.log("✅ Pipeline completed successfully:", result);
+      toast.success("Digest completed successfully");
+    } else {
+      console.error("❌ Pipeline failed:", result);
+      toast.error("Digest failed");
     }
   };
 
@@ -264,7 +223,9 @@ function TextFromSource() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Label className="text-lg font-semibold">Text from Source</Label>
+          <Label className="text-lg font-semibold">
+            Text from Source <span className="text-xs text-red-600">required</span>
+          </Label>
           <Tooltip>
             <TooltipTrigger asChild>
               <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
@@ -274,14 +235,11 @@ function TextFromSource() {
             </TooltipContent>
           </Tooltip>
         </div>
-        <span className="text-sm text-muted-foreground">
-          {wordCount.toLocaleString()}/{maxWords.toLocaleString()} words
-        </span>
       </div>
 
       {/* Textarea */}
       <div className="relative">
-        <Textarea id="source-text" value={sourceUsage.sourceText} onChange={(e) => handleTextChange(e.target.value)} onPaste={handlePaste} placeholder="Paste or enter source text here..." className={`w-full max-h-[500px] resize-none transition-all duration-200 ${expanded ? "min-h-[500px] max-h-[500px]" : "min-h-[300px] max-h-[300px]"}`} />
+        <Textarea id="source-text" value={sourceUsage.sourceText} onChange={(e) => handleTextChange(e.target.value)} onPaste={handlePaste} placeholder="Paste or enter source text here..." className={`w-full resize-none transition-all duration-200 ${expanded ? "min-h-fit" : "min-h-[300px] max-h-[300px]"} ${!sourceUsage.sourceText.trim() ? "border-red-500 focus:border-red-500" : ""}`} style={expanded ? { height: "auto", minHeight: "300px" } : {}} />
         <Button variant="ghost" size="sm" onClick={handleExpandToggle} className="absolute top-2 right-2 h-6 w-6 p-0 bg-muted/50 hover:bg-muted/80 transition-colors cursor-pointer">
           {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
         </Button>
@@ -289,19 +247,17 @@ function TextFromSource() {
 
       {/* Actions */}
       <div className="flex justify-between pb-6">
-        <ResetConfirmDialog onConfirm={handleReset}>
-          <Button variant="outline" disabled={isLoading}>
-            Reset
-          </Button>
-        </ResetConfirmDialog>
-        <Button onClick={handleDigestClick} disabled={!canDigest || isLoading}>
+        <span className="text-sm text-muted-foreground flex items-center">
+          {wordCountValue.toLocaleString()}/{maxWords.toLocaleString()} words
+        </span>
+        <Button onClick={handleDigestClick} disabled={!canDigest || isLoading} className="bg-blue-500 hover:bg-blue-600">
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Processing...
             </>
           ) : (
-            "Digest"
+            "Go"
           )}
         </Button>
       </div>

@@ -31,7 +31,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 // Icons ---------------------------------------------------------------------
@@ -294,20 +293,6 @@ function PresetsManager({ presets = [] }: PresetsProps) {
             placeholder="Enter preset title..."
             className="w-full"
             disabled={isUpdateMode} // Disable when updating existing preset
-          />
-        </div>
-
-        {/* Preset Instructions */}
-        <div className="space-y-2">
-          <Label htmlFor="editor-instructions" className="text-sm font-medium">
-            Editor Instructions
-          </Label>
-          <Textarea
-            id="editor-instructions"
-            value={preset.instructions}
-            onChange={(e) => handleField("instructions", e.target.value)}
-            placeholder="Enter editor instructions..."
-            className="w-full h-20 max-h-40 overflow-y-auto overflow-x-hidden resize-y"
           />
         </div>
 

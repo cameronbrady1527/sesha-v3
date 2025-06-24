@@ -20,6 +20,7 @@ import { getAuthenticatedUserServer } from "@/lib/supabase/server";
 // Database ---
 import { createArticleRecord } from "@/db/dal";
 import { Article } from "@/db/schema";
+import type { ArticleMetadata } from "@/db/dal";
 
 /* ==========================================================================*/
 // Types
@@ -31,6 +32,12 @@ interface CreateNewVersionResult {
   error?: string;
 }
 
+interface LoadArticlesResult {
+  success: boolean;
+  articles: ArticleMetadata[];
+  totalCount: number;
+  error?: string;
+}
 
 /* ==========================================================================*/
 // Actions
@@ -101,7 +108,6 @@ export async function createNewVersionAction(
     const fieldsToUpdate = {
       ...(updates.blob !== undefined && { blob: updates.blob }),
       ...(updates.content !== undefined && { content: updates.content }),
-      ...(updates.sentences !== undefined && { sentences: updates.sentences }),
       ...(updates.status !== undefined && { status: updates.status }),
       ...(updates.headline !== undefined && { headline: updates.headline }),
     };
@@ -130,6 +136,127 @@ export async function createNewVersionAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create new version"
+    };
+  }
+}
+
+/**
+ * loadArticlesAction
+ *
+ * Server action to load paginated article metadata for infinite scroll.
+ *
+ * @param offset - Number of articles to skip
+ * @param limit - Number of articles to load (default 50)
+ * @returns Articles data with pagination info
+ */
+export async function loadArticlesAction(
+  offset: number = 0,
+  limit: number = 50
+): Promise<LoadArticlesResult> {
+  try {
+    // Authentication check
+    const user = await getAuthenticatedUserServer();
+    if (!user) {
+      redirect("/login");
+    }
+
+    // Import DAL functions
+    const { getOrgArticlesMetadataPaginated, getOrgArticlesCount } = await import("@/db/dal");
+    
+    // Load articles with pagination
+    const articles = await getOrgArticlesMetadataPaginated(user.orgId, limit, offset);
+    const totalCount = await getOrgArticlesCount(user.orgId);
+
+    return {
+      success: true,
+      articles,
+      totalCount,
+    };
+  } catch (error) {
+    console.error("❌ loadArticlesAction failed:", error);
+    return {
+      success: false,
+      articles: [],
+      totalCount: 0,
+      error: error instanceof Error ? error.message : "Failed to load articles"
+    };
+  }
+}
+
+/**
+ * archiveArticleAction
+ *
+ * Server action to archive an article by setting its status to 'archived'.
+ *
+ * @param articleId - The article ID to archive
+ * @returns Success/error result
+ */
+export async function archiveArticleAction(articleId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Authentication check
+    const user = await getAuthenticatedUserServer();
+    if (!user) {
+      redirect("/login");
+    }
+
+    // Import DAL function
+    const { archiveArticle } = await import("@/db/dal");
+    
+    // Archive the article
+    const result = await archiveArticle(articleId, user.id);
+    
+    if (result) {
+      // Revalidate library page to reflect changes
+      revalidatePath("/library");
+      
+      return { success: true };
+    } else {
+      return { success: false, error: "Article not found" };
+    }
+  } catch (error) {
+    console.error("❌ archiveArticleAction failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to archive article"
+    };
+  }
+}
+
+/**
+ * unarchiveArticleAction
+ *
+ * Server action to unarchive an article by setting its status to 'published'.
+ *
+ * @param articleId - The article ID to unarchive
+ * @returns Success/error result
+ */
+export async function unarchiveArticleAction(articleId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Authentication check
+    const user = await getAuthenticatedUserServer();
+    if (!user) {
+      redirect("/login");
+    }
+
+    // Import DAL function
+    const { unarchiveArticle } = await import("@/db/dal");
+    
+    // Unarchive the article
+    const result = await unarchiveArticle(articleId, user.id);
+    
+    if (result) {
+      // Revalidate library page to reflect changes
+      revalidatePath("/library");
+      
+      return { success: true };
+    } else {
+      return { success: false, error: "Article not found" };
+    }
+  } catch (error) {
+    console.error("❌ unarchiveArticleAction failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to unarchive article"
     };
   }
 }

@@ -40,7 +40,7 @@ function BasicDigestInputs() {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Label htmlFor="slug-input" className="text-sm font-medium">
-            Slug
+            Slug <span className="text-xs text-red-600">required</span>
           </Label>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -60,14 +60,20 @@ function BasicDigestInputs() {
             </TooltipContent>
           </Tooltip>
         </div>
-        <Input id="slug-input" value={basic.slug} onChange={(e) => setBasic("slug", e.target.value)} placeholder="Enter slug..." className="w-full" />
+        <Input 
+          id="slug-input" 
+          value={basic.slug} 
+          onChange={(e) => setBasic("slug", e.target.value)} 
+          placeholder="Enter slug..." 
+          className={`w-full ${!basic.slug.trim() ? 'border-red-500 focus:border-red-500' : ''}`}
+        />
       </div>
 
       {/* Headline Input --- */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Label htmlFor="headline-input" className="text-sm font-medium">
-            Headline
+            Headline <span className="text-xs text-muted-foreground">optional</span>
           </Label>
           <Tooltip>
             <TooltipTrigger asChild>

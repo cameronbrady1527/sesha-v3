@@ -56,8 +56,8 @@ function VersionCard({ version, headline, createdAt, isActive, onClick }: Versio
     <div 
       className={`group p-4 border rounded-lg bg-card hover:bg-accent cursor-pointer transition-colors duration-200 border-l-4 ${
         isActive 
-          ? 'border-l-primary bg-accent' 
-          : 'border-l-primary/20 hover:border-l-primary/40'
+          ? 'border-l-blue-500 bg-accent' 
+          : 'border-l-blue-500/20 hover:border-l-blue-500/40'
       }`}
       onClick={onClick}
     >
@@ -103,7 +103,7 @@ function Versions() {
         <div className="space-y-4">
           <Label className="text-sm font-medium">Version History</Label>
           
-          <Button asChild className="w-full">
+          <Button asChild className="w-full bg-blue-500 hover:bg-blue-600 cursor-pointer text-white">
             <Link href={currentArticle ? `/digest?slug=${currentArticle.slug}&version=${currentVersion}` : "/digest"}>
               <span className="font-medium">CHANGE INPUTS</span>
             </Link>

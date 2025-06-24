@@ -17,8 +17,8 @@ import React from "react";
 import { useRouter } from "next/navigation";
 
 // External Packages --------------------------------------------------------
-import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, type ColumnFiltersState, type SortingState, type VisibilityState, useReactTable, ColumnDef } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, type ColumnFiltersState, type SortingState, type VisibilityState, useReactTable, ColumnDef } from "@tanstack/react-table";
+import { Search, Archive, ArchiveRestore, X, RefreshCw } from "lucide-react";
 
 // Local Modules ------------------------------------------------------------
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { ArticleMetadata } from "@/db/dal";
 import { columns } from "./columns";
+import { archiveArticleAction, unarchiveArticleAction } from "@/actions/article";
 
 /* ==========================================================================*/
 // Types
@@ -35,7 +36,10 @@ import { columns } from "./columns";
 interface ArticleDataTableProps {
   /** Array of article metadata rows to render. */
   articles: ArticleMetadata[];
-  totalCount: number;
+  /** Whether more articles are being loaded */
+  isLoading?: boolean;
+  /** Callback to refresh article data */
+  onRefresh?: () => void;
 }
 
 /* ==========================================================================*/
@@ -46,21 +50,34 @@ interface ArticleDataTableProps {
  * ArticleDataTable
  *
  * Reusable table for displaying a list of ArticleMetadata.
- * Provides client-side search, multi-column filters and pagination.
+ * Provides client-side search and multi-column filters.
  *
- * @param articleMetadata - Raw rows to display
+ * @param articles - Raw rows to display
+ * @param isLoading - Whether more articles are being loaded
+ * @param onRefresh - Callback to refresh article data
  */
-function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
+function ArticleDataTable({ articles, isLoading = false, onRefresh }: ArticleDataTableProps) {
   const router = useRouter();
 
   /* -------------------------------- State -------------------------------- */
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "createdAt", desc: true } // Default sort by most recent
+  ]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [showArchived, setShowArchived] = React.useState(false);
+  const [isArchiving, setIsArchiving] = React.useState(false);
+  const [isRefreshAnimating, setIsRefreshAnimating] = React.useState(false);
 
   /* ---------------------------- Table instance --------------------------- */
+  const filteredArticles = React.useMemo(() => {
+    return showArchived 
+      ? articles.filter(article => article.status === 'archived')
+      : articles.filter(article => article.status !== 'archived');
+  }, [articles, showArchived]);
+
   const table = useReactTable({
-    data: articles,
+    data: filteredArticles,
     columns: columns as ColumnDef<ArticleMetadata>[],
     state: {
       sorting,
@@ -73,7 +90,6 @@ function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   /* ----------------------- Derived values / helpers ---------------------- */
@@ -83,6 +99,61 @@ function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
     const creators = new Set(articles.map((row) => row.createdByName).filter(Boolean));
     return Array.from(creators).sort();
   }, [articles]);
+
+  // Get selected article IDs
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  const selectedArticleIds = selectedRows.map(row => row.original.id);
+
+  // Handle archive action
+  const handleArchive = async () => {
+    if (selectedArticleIds.length === 0) return;
+    
+    setIsArchiving(true);
+    try {
+      const promises = selectedArticleIds.map(id => archiveArticleAction(id));
+      await Promise.all(promises);
+      
+      // Clear selection
+      table.toggleAllRowsSelected(false);
+      
+      // Refresh data
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to archive articles:', error);
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  // Handle unarchive action
+  const handleUnarchive = async () => {
+    if (selectedArticleIds.length === 0) return;
+    
+    setIsArchiving(true);
+    try {
+      const promises = selectedArticleIds.map(id => unarchiveArticleAction(id));
+      await Promise.all(promises);
+      
+      // Clear selection
+      table.toggleAllRowsSelected(false);
+      
+      // Refresh data
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to unarchive articles:', error);
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  // Handle cancel/deselect all
+  const handleCancel = () => {
+    table.toggleAllRowsSelected(false);
+  };
 
   // Handle row navigation on click.
   const handleRowClick = (row: ArticleMetadata, event: React.MouseEvent) => {
@@ -97,6 +168,22 @@ function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
     router.push(`/article?slug=${encodeURIComponent(row.slug)}`);
   };
 
+  // Handle refresh with animation
+  const handleRefreshClick = () => {
+    if (!onRefresh || isLoading) return;
+    
+    // Start animation
+    setIsRefreshAnimating(true);
+    
+    // Call the refresh function
+    onRefresh();
+    
+    // Stop animation after 1 second
+    setTimeout(() => {
+      setIsRefreshAnimating(false);
+    }, 500);
+  };
+
   /* ----------------------------- Render ---------------------------------- */
 
   return (
@@ -107,8 +194,8 @@ function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
         <Input placeholder="Search articles…" value={(table.getColumn("slug")?.getFilterValue() as string) ?? ""} onChange={(e) => table.getColumn("slug")?.setFilterValue(e.target.value)} className="pl-10 w-full" />
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3">
+      {/* Filters and Actions */}
+      <div className="flex items-center justify-between gap-3">
         {/* Created-by filter */}
         <Select value={(table.getColumn("createdByName")?.getFilterValue() as string) ?? ""} onValueChange={(value) => table.getColumn("createdByName")?.setFilterValue(value === "all" ? "" : value)}>
           <SelectTrigger className="w-[180px]">
@@ -124,19 +211,64 @@ function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
           </SelectContent>
         </Select>
 
-        {/* Status filter */}
-        <Select value={(table.getColumn("status")?.getFilterValue() as string) ?? ""} onValueChange={(value) => table.getColumn("status")?.setFilterValue(value === "all" ? "" : value)}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="processing">Processing</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          {/* Refresh button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshClick}
+            disabled={!onRefresh || isLoading}
+            className="flex items-center gap-1"
+          >
+            <RefreshCw className={`h-4 w-4 transition-transform duration-1000 ${isRefreshAnimating ? 'animate-spin' : ''}`} />
+          </Button>
+
+          {/* Show/Hide Archived Toggle */}
+          <Button
+            variant={showArchived ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowArchived(!showArchived)}
+          >
+            {showArchived ? "Hide Archived" : "Show Archived"}
+          </Button>
+
+          {/* Archive button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleArchive}
+            disabled={selectedArticleIds.length === 0 || isArchiving || showArchived}
+            className="flex items-center gap-1"
+          >
+            <Archive className="h-4 w-4" />
+            Archive ({selectedArticleIds.length})
+          </Button>
+
+          {/* Unarchive button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleUnarchive}
+            disabled={selectedArticleIds.length === 0 || isArchiving || !showArchived}
+            className="flex items-center gap-1"
+          >
+            <ArchiveRestore className="h-4 w-4" />
+            Unarchive ({selectedArticleIds.length})
+          </Button>
+
+          {/* Cancel button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancel}
+            disabled={selectedArticleIds.length === 0}
+            className="flex items-center gap-1"
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </Button>
+        </div>
       </div>
 
       {/* Data table */}
@@ -153,17 +285,19 @@ function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} onClick={(event) => handleRowClick(row.original, event)} className="cursor-pointer hover:bg-muted/50">
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} onClick={(event) => handleRowClick(row.original, event)} className="cursor-pointer hover:bg-muted/50">
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </>
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  No articles found.
+                  {showArchived ? "No archived articles found." : "No articles found."}
                 </TableCell>
               </TableRow>
             )}
@@ -171,22 +305,15 @@ function ArticleDataTable({ articles, totalCount }: ArticleDataTableProps) {
         </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between space-x-2 py-4">
-        {articles.length > 0 && (
-          <div className="text-sm text-muted-foreground">
-            Showing {articles.length} of {totalCount} articles
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-          Previous
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-          Next
-        </Button>
-      </div>
-      </div>
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="flex justify-center py-4">
+          <div className="text-sm text-muted-foreground">Loading more articles...</div>
+        </div>
+      )}
+
+      {/* Status info */}
+
     </div>
   );
 }

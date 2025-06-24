@@ -101,7 +101,7 @@ function ArticleHeader() {
         const updateData = {
           headline: currentArticle.headline,
           blob: currentArticle.blob,
-          sentences: currentArticle.sentences,
+          content: currentArticle.content,
           status: "published" as const
         };
         
@@ -148,7 +148,7 @@ function ArticleHeader() {
         <div className="flex items-center space-x-3">
           <VersionSelect />
           <Button 
-            className="bg-primary hover:bg-primary/90 cursor-pointer text-white"
+            className="bg-blue-500 hover:bg-blue-600 cursor-pointer text-white"
             onClick={handleSave}
             disabled={isPending || !hasChanges}
           >
@@ -187,9 +187,9 @@ function ArticleHeader() {
       {/* End of Header Section ---- */}
 
       {/* Start of Article Info Section --- */}
-      <div className="space-y-2 pt-2">
+      <div className="space-y-2 pt-3">
         {/* Start of Headline Row --- */}
-        <h1 className="text-[22px] line-clamp-1 font-semibold leading-tight">
+        <h1 className="text-[24px] line-clamp-2 font-semibold leading-wide">
           {headline}
         </h1>
         {/* End of Headline Row ---- */}

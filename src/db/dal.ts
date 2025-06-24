@@ -241,7 +241,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       headline: articles.headline,
       blob: articles.blob,
       content: articles.content,
-      sentences: articles.sentences,
+      // sentences: articles.sentences,
       changeDescription: articles.changeDescription,
       inputSourceText: articles.inputSourceText,
       inputSourceDescription: articles.inputSourceDescription,
@@ -437,7 +437,7 @@ export async function createArticleRecord(payload: {
         slug: payload.slug,
         version: nextVersion,
         headline: payload.headline,
-        status: "processing",
+        status: "10%",
 
         // Input snapshot fields
         inputSourceText: payload.source.sourceText,
@@ -474,7 +474,7 @@ export async function createArticleRecord(payload: {
  * @param blobs - Generated blobs from step 3
  * @param formattedArticle - Final formatted article from step 7
  */
-export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string, sentences: string[]): Promise<void> {
+export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string): Promise<void> {
   await db
     .update(articles)
     .set({
@@ -482,7 +482,6 @@ export async function updateArticleWithResults(articleId: string, userId: string
       headline: isSuccessful ? headline : null,
       blob: isSuccessful ? blobs.join("\n") : null,
       content: isSuccessful ? formattedArticle : null,
-      sentences: isSuccessful ? sentences : null,
       updatedBy: userId,
       updatedAt: new Date(),
     })
@@ -497,7 +496,7 @@ export async function updateArticleWithResults(articleId: string, userId: string
  * @param updates - Partial article fields to update
  * @returns Updated article or null if not found
  */
-export async function updateArticle(articleId: string, userId: string, updates: Partial<Pick<Article, "headline" | "blob" | "content" | "sentences" | "status">>): Promise<Article | null> {
+export async function updateArticle(articleId: string, userId: string, updates: Partial<Pick<Article, "headline" | "blob" | "content" | "status">>): Promise<Article | null> {
   console.log("🗄️ updateArticle called with:", { articleId, userId, updates });
 
   try {
@@ -527,4 +526,82 @@ export async function updateArticle(articleId: string, userId: string, updates: 
     console.error("❌ Database update failed:", error);
     throw error;
   }
+}
+
+/**
+ * Update article status with progress tracking.
+ * Simple function to update only the article status and audit fields.
+ *
+ * @param articleId - The article ID to update
+ * @param userId - User ID for audit trail
+ * @param status - New article status from the enum
+ * @returns Updated article or null if not found
+ */
+export async function updateArticleStatus(articleId: string, userId: string, status: ArticleStatus): Promise<Article | null> {
+  console.log(`📊 Updating article status to: ${status}`);
+
+  try {
+    const [updatedArticle] = await db
+      .update(articles)
+      .set({
+        status,
+        updatedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(articles.id, articleId))
+      .returning();
+
+    if (updatedArticle) {
+      console.log(`✅ Article ${articleId} status updated to: ${status}`);
+    } else {
+      console.log(`❌ Article ${articleId} not found for status update`);
+    }
+
+    return updatedArticle || null;
+  } catch (error) {
+    console.error("❌ Article status update failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Archive an article by setting its status to 'archived'.
+ *
+ * @param articleId - The article ID to archive
+ * @param userId - User ID for audit trail
+ * @returns Updated article or null if not found
+ */
+export async function archiveArticle(articleId: string, userId: string): Promise<Article | null> {
+  const [updatedArticle] = await db
+    .update(articles)
+    .set({
+      status: "archived",
+      updatedBy: userId,
+      updatedAt: new Date(),
+    })
+    .where(eq(articles.id, articleId))
+    .returning();
+
+  return updatedArticle || null;
+}
+
+/**
+ * Unarchive an article by setting its status to 'published'.
+ *
+ * @param articleId - The article ID to unarchive
+ * @param userId - User ID for audit trail
+ * @returns Updated article or null if not found
+ */
+export async function unarchiveArticle(articleId: string, userId: string): Promise<Article | null> {
+  const [updatedArticle] = await db
+    .update(articles)
+    .set({
+      status: "published",
+      updatedBy: userId,
+      updatedAt: new Date(),
+    })
+    .where(eq(articles.id, articleId))
+    .returning();
+
+  return updatedArticle || null;
 }

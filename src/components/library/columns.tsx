@@ -49,6 +49,30 @@ const columns: ColumnDef<ArticleMetadata>[] = [
     size: 42,
   },
 
+  /* ----------------------------- Timestamp ----------------------------- */
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-auto p-0 font-medium"
+      >
+        Timestamp <ArrowUpDown className="ml-1 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const date = new Date(row.getValue<Date>("createdAt"));
+      return (
+        <div className="text-sm">
+          <div>{date.toLocaleDateString()}</div>
+          <div className="text-muted-foreground">{date.toLocaleTimeString()}</div>
+        </div>
+      );
+    },
+    size: 140,
+  },
+
   /* -------------------------------- Slug -------------------------------- */
   {
     accessorKey: "slug",
@@ -141,23 +165,6 @@ const columns: ColumnDef<ArticleMetadata>[] = [
       <span className="capitalize">{row.getValue<string>("status")}</span>
     ),
     size: 100,
-  },
-
-  /* ----------------------------- Created At ----------------------------- */
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium"
-      >
-        Created <ArrowUpDown className="ml-1 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) =>
-      new Date(row.getValue<Date>("createdAt")).toLocaleDateString(),
-    size: 110,
   },
 ];
 

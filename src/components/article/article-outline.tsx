@@ -63,10 +63,10 @@ function ArticleOutline() {
     const newBlobOutput = e.target.value;
     setBlobOutput(newBlobOutput);
     
-    // Convert dashed list back to newline-separated format for storage
+    // Convert bullet list back to newline-separated format for storage
     const blobForStorage = newBlobOutput
       .split('\n')
-      .map(line => line.replace(/^-\s*/, ''))
+      .map(line => line.replace(/^•\s*/, ''))
       .filter(line => line.trim() !== '')
       .join('\n');
     
@@ -105,7 +105,7 @@ function ArticleOutline() {
           value={manualHeadline}
           onChange={handleHeadlineChange}
           placeholder="Enter manual headline..."
-          className="w-full"
+          className="w-full !text-base font-bold"
         />
       </div>
 
@@ -130,7 +130,7 @@ function ArticleOutline() {
             value={blobOutput}
             onChange={handleBlobChange}
             placeholder="Generated blob output will appear here..."
-            className={`w-full resize-none transition-all duration-200 ${
+            className={`w-full resize-none transition-all duration-200 !text-base font-bold ${
               isExpanded ? "min-h-[200px]" : "min-h-[100px]"
             }`}
           />

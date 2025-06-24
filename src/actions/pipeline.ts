@@ -13,12 +13,15 @@
 // Core Modules ---
 import "server-only";
 
+// Next.js ---
+import { revalidatePath } from "next/cache";
+
 // Local Database ----
-import { createArticleRecord, updateArticleWithResults } from "@/db/dal";
+import { createArticleRecord, updateArticleWithResults, updateArticleStatus } from "@/db/dal";
 
 // Local Utils ----
 import { cleanSlug } from "@/lib/utils";
-import { createPipelineLogger, initializeGlobalLogger, closeGlobalLogger, getGlobalLogger } from "@/lib/pipeline-logger";
+import { createPipelineLogger, initializeGlobalLogger, closeGlobalLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
 import type { 
@@ -80,22 +83,22 @@ function validatePipelineSuccess(
   step3Result: Step03WriteHeadlineAndBlobsResponse,
   step4Result: Step04WriteArticleOutlineResponse,
   step5Result: Step05WriteArticleResponse,
-  step6Result: Step06ParaphraseArticleResponse,
+  // step6Result: Step06ParaphraseArticleResponse,
   step7Result: Step07SentencePerLineAttributionResponse
 ): boolean {
-  // Check if all steps are successful (ensure they are all truthy)
+  // Check if all steps are successful (ensure the first 5 are truthy)
   const allStepsSuccessful = [
     step1Result,
     step2Result,
     step3Result,
     step4Result,
     step5Result,
-    step6Result,
+    // step6Result,
     step7Result
   ].every(result => result && result.success === true);
 
   // Check if step7 has meaningful content (> 100 chars)
-  const finalArticle = Boolean(step7Result.sentences) && step7Result.sentences.length > 0;
+  const finalArticle = Boolean(step7Result.formattedArticle)
 
   // Check if step3 has both headline and blobs
   const finalHeadlineAndBlobs = Boolean(step3Result.headline) && 
@@ -117,12 +120,11 @@ function validatePipelineSuccess(
  * 
  * @param articleId - Article ID for tracking
  * @param request - Digest request with source data
+ * @param logger - Pipeline logger for logging
  * @returns Response with extracted quotes
  */
-async function step01ExtractFactQuotes(articleId: string, request: DigestRequest): Promise<Step01ExtractFactQuotesResponse> {
+async function step01ExtractFactQuotes(articleId: string, request: DigestRequest, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step01ExtractFactQuotesResponse> {
   console.log('🚀 Step 1: Extract Fact Quotes');
-  
-  const logger = getGlobalLogger();
   
   try {
     // Prepare the request for the API
@@ -196,9 +198,10 @@ async function step01ExtractFactQuotes(articleId: string, request: DigestRequest
  * 
  * @param articleId - Article ID for tracking
  * @param request - Digest request with source data
+ * @param logger - Pipeline logger for logging
  * @returns Response with summarized facts
  */
-async function step02SummarizeFacts(articleId: string, request: DigestRequest): Promise<Step02SummarizeFactsResponse> {
+async function step02SummarizeFacts(articleId: string, request: DigestRequest, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step02SummarizeFactsResponse> {
   console.log('🚀 Step 2: Summarize Facts');
   
   try {
@@ -209,6 +212,11 @@ async function step02SummarizeFacts(articleId: string, request: DigestRequest): 
       sourceText: request.source.sourceText,
       instructions: request.instructions.instructions
     };
+
+    // Log the step request
+    if (logger) {
+      logger.logStepRequest(2, 'Summarize Facts', step02Request);
+    }
 
     // Call the API endpoint
     const response = await fetch(`${baseUrl}/api/steps/02-summarize-facts`, {
@@ -225,16 +233,33 @@ async function step02SummarizeFacts(articleId: string, request: DigestRequest): 
 
     const aiResult: Step02SummarizeFactsAIResponse = await response.json();
     
+    // Log the API response
+    if (logger) {
+      logger.logStepResponse(2, 'Summarize Facts', aiResult);
+    }
+    
     // Wrap AI response with article management
-    return {
+    const result = {
       articleId,
       stepNumber: 2,
       success: true,
       summary: aiResult.summary
     };
 
+    // Log step completion
+    if (logger) {
+      logger.logStepComplete(2, 'Summarize Facts', result);
+    }
+
+    return result;
+
   } catch (error) {
     console.error('Step 2 - Summarize facts failed:', error);
+    
+    // Log the error
+    if (logger) {
+      logger.logError('STEP_2_ERROR', error);
+    }
     
     return {
       articleId,
@@ -252,12 +277,13 @@ async function step02SummarizeFacts(articleId: string, request: DigestRequest): 
  * 
  * @param articleId - Article ID for tracking
  * @param request - Digest request with instructions
+ * @param step1Result - Previous step results for context
+ * @param step2Result - Previous step results for context
+ * @param logger - Pipeline logger for logging
  * @returns Response with headline and blobs
  */
-async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestRequest): Promise<Step03WriteHeadlineAndBlobsResponse> {
+async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestRequest, step1Result: Step01ExtractFactQuotesResponse, step2Result: Step02SummarizeFactsResponse, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step03WriteHeadlineAndBlobsResponse> {
   console.log('🚀 Step 3: Write Headline and Blobs');
-  
-  const logger = getGlobalLogger();
   
   try {
     // Prepare the request for the API
@@ -268,7 +294,9 @@ async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestReq
       // Add source content for AI to work with
       sourceAccredit: request.source.accredit,
       sourceDescription: request.source.description,
-      sourceText: request.source.sourceText
+      sourceText: request.source.sourceText,
+      summarizeFacts: step2Result.summary,
+      extractFactQuotes: JSON.stringify(step1Result.quotes)
     };
 
     // Log the step request
@@ -340,9 +368,10 @@ async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestReq
  * @param step1Result - Previous step results for context
  * @param step2Result - Previous step results for context
  * @param step3Result - Previous step results for context
+ * @param logger - Pipeline logger for logging
  * @returns Response with article outline
  */
-async function step04WriteArticleOutline(articleId: string, request: DigestRequest, step1Result: Step01ExtractFactQuotesResponse, step2Result: Step02SummarizeFactsResponse, step3Result: Step03WriteHeadlineAndBlobsResponse): Promise<Step04WriteArticleOutlineResponse> {
+async function step04WriteArticleOutline(articleId: string, request: DigestRequest, step1Result: Step01ExtractFactQuotesResponse, step2Result: Step02SummarizeFactsResponse, step3Result: Step03WriteHeadlineAndBlobsResponse, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step04WriteArticleOutlineResponse> {
   console.log('🚀 Step 4: Write Article Outline');
   
   try {
@@ -357,6 +386,11 @@ async function step04WriteArticleOutline(articleId: string, request: DigestReque
       extractFactQuotesText: JSON.stringify(step1Result.quotes), // Convert quotes array to string
       headlineAndBlobsText: `Headline: ${step3Result.headline}\nBlobs: ${step3Result.blobs.join('\n')}`
     };
+
+    // Log the step request
+    if (logger) {
+      logger.logStepRequest(4, 'Write Article Outline', step04Request);
+    }
 
     // Call the API endpoint
     const response = await fetch(`${baseUrl}/api/steps/04-write-article-outline`, {
@@ -373,16 +407,33 @@ async function step04WriteArticleOutline(articleId: string, request: DigestReque
 
     const aiResult: Step04WriteArticleOutlineAIResponse = await response.json();
     
+    // Log the API response
+    if (logger) {
+      logger.logStepResponse(4, 'Write Article Outline', aiResult);
+    }
+    
     // Wrap AI response with article management
-    return {
+    const result = {
       articleId,
       stepNumber: 4,
       success: true,
       outline: aiResult.outline
     };
 
+    // Log step completion
+    if (logger) {
+      logger.logStepComplete(4, 'Write Article Outline', result);
+    }
+
+    return result;
+
   } catch (error) {
     console.error('Step 4 - Write article outline failed:', error);
+    
+    // Log the error
+    if (logger) {
+      logger.logError('STEP_4_ERROR', error);
+    }
     
     return {
       articleId,
@@ -403,9 +454,10 @@ async function step04WriteArticleOutline(articleId: string, request: DigestReque
  * @param step2Result - Summary from step 2
  * @param step3Result - Headlines and blobs from step 3
  * @param step4Result - Outline from step 4
+ * @param logger - Pipeline logger for logging
  * @returns Response with full article content
  */
-async function step05WriteArticle(articleId: string, request: DigestRequest, step2Result: Step02SummarizeFactsResponse, step3Result: Step03WriteHeadlineAndBlobsResponse, step4Result: Step04WriteArticleOutlineResponse): Promise<Step05WriteArticleResponse> {
+async function step05WriteArticle(articleId: string, request: DigestRequest, step2Result: Step02SummarizeFactsResponse, step3Result: Step03WriteHeadlineAndBlobsResponse, step4Result: Step04WriteArticleOutlineResponse, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step05WriteArticleResponse> {
   console.log('🚀 Step 5: Write Article');
   
   try {
@@ -422,6 +474,11 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
       articleOutlineText: step4Result.outline.join('\n')
     };
 
+    // Log the step request
+    if (logger) {
+      logger.logStepRequest(5, 'Write Article', step05Request);
+    }
+
     // Call the API endpoint
     const response = await fetch(`${baseUrl}/api/steps/05-write-article`, {
       method: 'POST',
@@ -437,16 +494,33 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
 
     const aiResult: Step05WriteArticleAIResponse = await response.json();
     
+    // Log the API response
+    if (logger) {
+      logger.logStepResponse(5, 'Write Article', aiResult);
+    }
+    
     // Wrap AI response with article management
-    return {
+    const result = {
       articleId,
       stepNumber: 5,
       success: true,
       article: aiResult.article
     };
 
+    // Log step completion
+    if (logger) {
+      logger.logStepComplete(5, 'Write Article', result);
+    }
+
+    return result;
+
   } catch (error) {
     console.error('Step 5 - Write article failed:', error);
+    
+    // Log the error
+    if (logger) {
+      logger.logError('STEP_5_ERROR', error);
+    }
     
     return {
       articleId,
@@ -465,9 +539,10 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
  * @param articleId - Article ID for tracking
  * @param request - Digest request with source context
  * @param step5Result - Article from step 5
+ * @param logger - Pipeline logger for logging
  * @returns Response with paraphrased article
  */
-async function step06ParaphraseArticle(articleId: string, request: DigestRequest, step5Result: Step05WriteArticleResponse): Promise<Step06ParaphraseArticleResponse> {
+async function step06ParaphraseArticle(articleId: string, request: DigestRequest, step5Result: Step05WriteArticleResponse, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step06ParaphraseArticleResponse> {
   console.log('🚀 Step 6: Paraphrase Article');
   
   try {
@@ -479,6 +554,11 @@ async function step06ParaphraseArticle(articleId: string, request: DigestRequest
       // Article from previous step
       articleText: step5Result.article
     };
+
+    // Log the step request
+    if (logger) {
+      logger.logStepRequest(6, 'Paraphrase Article', step06Request);
+    }
 
     // Call the API endpoint
     const response = await fetch(`${baseUrl}/api/steps/06-paraphrase-article`, {
@@ -495,16 +575,33 @@ async function step06ParaphraseArticle(articleId: string, request: DigestRequest
 
     const aiResult: Step06ParaphraseArticleAIResponse = await response.json();
     
+    // Log the API response
+    if (logger) {
+      logger.logStepResponse(6, 'Paraphrase Article', aiResult);
+    }
+    
     // Wrap AI response with article management
-    return {
+    const result = {
       articleId,
       stepNumber: 6,
       success: true,
       paraphrasedArticle: aiResult.paraphrasedArticle
     };
 
+    // Log step completion
+    if (logger) {
+      logger.logStepComplete(6, 'Paraphrase Article', result);
+    }
+
+    return result;
+
   } catch (error) {
     console.error('Step 6 - Paraphrase article failed:', error);
+    
+    // Log the error
+    if (logger) {
+      logger.logError('STEP_6_ERROR', error);
+    }
     
     return {
       articleId,
@@ -522,10 +619,11 @@ async function step06ParaphraseArticle(articleId: string, request: DigestRequest
  * 
  * @param articleId - Article ID for tracking
  * @param request - Digest request (unused but kept for consistency)
- * @param step6Result - Paraphrased article from step 6
+ * @param step5Result - Article from step 5
+ * @param logger - Pipeline logger for logging
  * @returns Response with formatted article
  */
-async function step07SentencePerLineAttribution(articleId: string, request: DigestRequest, step6Result: Step06ParaphraseArticleResponse): Promise<Step07SentencePerLineAttributionResponse> {
+async function step07SentencePerLineAttribution(articleId: string, request: DigestRequest, step6Result: Step06ParaphraseArticleResponse, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step07SentencePerLineAttributionResponse> {
   console.log('🚀 Step 7: Sentence Per Line Attribution');
   
   try {
@@ -533,6 +631,11 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
     const step07Request: Step07SentencePerLineAttributionRequest = {
       paraphrasedArticle: step6Result.paraphrasedArticle
     };
+
+    // Log the step request
+    if (logger) {
+      logger.logStepRequest(7, 'Sentence Per Line Attribution', step07Request);
+    }
 
     // Call the API endpoint
     const response = await fetch(`${baseUrl}/api/steps/07-sentence-per-line-attribution`, {
@@ -549,23 +652,38 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
 
     const aiResult: Step07SentencePerLineAttributionAIResponse = await response.json();
     
+    // Log the API response
+    if (logger) {
+      logger.logStepResponse(7, 'Sentence Per Line Attribution', aiResult);
+    }
+    
     // Wrap AI response with article management
-    return {
+    const result = {
       articleId,
       stepNumber: 7,
       success: true,
-      sentences: aiResult.sentences,
       formattedArticle: aiResult.formattedArticle
     };
 
+    // Log step completion
+    if (logger) {
+      logger.logStepComplete(7, 'Sentence Per Line Attribution', result);
+    }
+
+    return result;
+
   } catch (error) {
     console.error('Step 7 - Sentence per line attribution failed:', error);
+    
+    // Log the error
+    if (logger) {
+      logger.logError('STEP_7_ERROR', error);
+    }
     
     return {
       articleId,
       stepNumber: 7,
       success: false,
-      sentences: [],
       formattedArticle: ''
     };
   }
@@ -622,15 +740,36 @@ async function executeDigestPipeline(request: DigestRequest): Promise<PipelineRe
 
     // 3. Create article record
     const article = await createArticleRecord(cleanedRequest);
+    revalidatePath('/library')
 
     // 4. Run all 7 steps with proper context passing and logging
-    const step1Result = await step01ExtractFactQuotes(article.id, cleanedRequest);
-    const step2Result = await step02SummarizeFacts(article.id, cleanedRequest);
-    const step3Result = await step03WriteHeadlineAndBlobs(article.id, cleanedRequest);
-    const step4Result = await step04WriteArticleOutline(article.id, cleanedRequest, step1Result, step2Result, step3Result);
-    const step5Result = await step05WriteArticle(article.id, cleanedRequest, step2Result, step3Result, step4Result);
-    const step6Result = await step06ParaphraseArticle(article.id, cleanedRequest, step5Result);
-    const step7Result = await step07SentencePerLineAttribution(article.id, cleanedRequest, step6Result);
+    const step1Result = await step01ExtractFactQuotes(article.id, cleanedRequest, logger);
+    const step2Result = await step02SummarizeFacts(article.id, cleanedRequest, logger);
+    
+    // Update status to 25% after step 2
+    await updateArticleStatus(article.id, cleanedRequest.metadata.userId, "25%");
+    revalidatePath('/library')
+    
+    const step3Result = await step03WriteHeadlineAndBlobs(article.id, cleanedRequest, step1Result, step2Result, logger);
+    
+    // Update status to 50% after step 3
+    await updateArticleStatus(article.id, cleanedRequest.metadata.userId, "50%");
+    revalidatePath('/library')
+    
+    const step4Result = await step04WriteArticleOutline(article.id, cleanedRequest, step1Result, step2Result, step3Result, logger);
+    
+    // Update status to 75% after step 4
+    await updateArticleStatus(article.id, cleanedRequest.metadata.userId, "75%");
+    revalidatePath('/library')
+    
+    const step5Result = await step05WriteArticle(article.id, cleanedRequest, step2Result, step3Result, step4Result, logger);
+    
+    // Update status to 90% after step 5
+    await updateArticleStatus(article.id, cleanedRequest.metadata.userId, "90%");
+    revalidatePath('/library')
+    
+    const step6Result = await step06ParaphraseArticle(article.id, cleanedRequest, step5Result, logger);
+    const step7Result = await step07SentencePerLineAttribution(article.id, cleanedRequest, step6Result, logger);
 
     // 5. Validate pipeline success
     const isSuccessful = validatePipelineSuccess(
@@ -639,7 +778,7 @@ async function executeDigestPipeline(request: DigestRequest): Promise<PipelineRe
       step3Result,
       step4Result,
       step5Result,
-      step6Result,
+    //   step6Result,
       step7Result
     );
 
@@ -651,7 +790,6 @@ async function executeDigestPipeline(request: DigestRequest): Promise<PipelineRe
       step3Result.headline,
       step3Result.blobs,
       step7Result.formattedArticle,
-      step7Result.sentences
     );
 
     // 7. Build and return response
@@ -662,7 +800,7 @@ async function executeDigestPipeline(request: DigestRequest): Promise<PipelineRe
       step_three_write_headline_and_blobs: step3Result,
       step_four_write_article_outline: step4Result,
       step_five_write_article: step5Result,
-      step_six_paraphrase_article: step6Result,
+      // step_six_paraphrase_article: step6Result,
       step_seven_sentence_per_line_attribution: step7Result,
     };
 
@@ -702,3 +840,4 @@ async function executeDigestPipeline(request: DigestRequest): Promise<PipelineRe
 /* ==========================================================================*/
 
 export { executeDigestPipeline };
+    

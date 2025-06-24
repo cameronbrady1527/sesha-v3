@@ -12,62 +12,92 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // AI SDK Core ---
-import { generateObject } from 'ai'
+import { generateText } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import { z } from 'zod'
 
 // Local Utilities ---
 import { buildPrompts } from '@/lib/utils'
 
 // Local Types ----
-import { Step07SentencePerLineAttributionRequest, Step07SentencePerLineAttributionAIResponse } from '@/types/digest'
+import { Step07SentencePerLineAttributionAIResponse, Step07SentencePerLineAttributionRequest } from '@/types/digest'
 
 /* ==========================================================================*/
 // Configuration
 /* ==========================================================================*/
 
-const model = openai('gpt-4o-mini')
+const model = openai('gpt-4o')
 
 /* ==========================================================================*/
 // Schema
 /* ==========================================================================*/
-
-const FormattedArticleSchema = z.object({
-  formattedArticle: z.string().describe('The article formatted with each sentence on a new line, preserving inline quotes and credits'),
-  sentences: z.array(z.string()).describe('Array of individual sentences, preserving inline quotes as single items. Each sentence should end with proper punctuation.')
-})
 
 /* ==========================================================================*/
 // Prompts
 /* ==========================================================================*/
 
 const SYSTEM_PROMPT = `
-Split the article into individual sentences, with each sentence as a separate array item. Preserve inline quotes and credits as single items (don't split quoted dialogue). Remove any source tags.
+Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). Remove the source tag but make sure to leave all instances of inline credits. 
 
 ###
+
 Example output format:
+<output article>
 Sentence.
 
-Output: 
-[
-  "Sentence one.",
-  "Sentence two.", 
-  "Quote dialogue, \"like this. Even if it has multiple sentences inside.\"",
-  "Final sentence."
-]
+Sentence.
 
-FORMAT:
-Return a JSON object with:
-- formattedArticle: The article formatted with each sentence on a new line, preserving inline quotes and credits
-- sentences: An array where each item is one sentence (keeping quoted dialogue together as single items). This is word for word identical to the formattedArticle, just in a different format.
+Sentence.
+
+Sentence with a quote, "like this. Even if it has multiple sentences in it, quotes remain on the same line."
+
+[...]
+</output article>
 
 <example>
+Example input:
+<article>
+Nume announced his return to the world of beatboxing in a video posted to Youtube on Thursday. (Source 1)
+
+"I'm back, baby," Nume said after a long-winded speech. (Source 1)
+
+"This is a new era for me. I hope it's a newer, better era... and I want to beatbox like never before." (Source 1)
+
+Nume holds several titles, including the 2019 American Championship title in looping, according to the video. (Source 1)
+
+This is his second retirement in two years. (Source 1)
+
+"I know I've said this before," Nume said. "But I mean it this time. I really do." (Source 1)
+
+"But I mean it this time. I really do." (Source 1)
+
+Nume turns 30 in November, according to CNN. (Source 1)
+</article>
+
+Example output:
+Nume announced his return to the world of beatboxing in a video posted to Youtube on Thursday.
+
+"I'm back, baby," Nume said after a long-winded speech.
+
+"This is a new era for me. I hope it's a newer, better era... and I want to beatbox like never before."
+
+Nume holds several titles, including the 2019 American Championship title in looping, according to the video.
+
+This is his second retirement in two years.
+
+"I know I've said this before," Nume said. "But I mean it this time. I really do."
+
+"But I mean it this time. I really do."
+
+Nume turns 30 in November, according to CNN.
+</example>
 `
 
 const USER_PROMPT = `
 <article>
-{draft_text}
+{{draft_text}}
 </article>
+
+DO NOT include any other text or comments in your response, or any <output> tags.
 `
 
 /* ==========================================================================*/
@@ -99,17 +129,16 @@ export async function POST(request: NextRequest) {
     )
 
     // Generate structured object using AI SDK
-    const { object } = await generateObject({
+    const { text } = await generateText({
       model,
       system: systemPrompt,
       prompt: userPrompt,
-      schema: FormattedArticleSchema,
+      temperature: 0.2,
     })
 
     // Build response - only AI data
     const response: Step07SentencePerLineAttributionAIResponse = {
-      formattedArticle: object.formattedArticle,
-      sentences: object.sentences
+      formattedArticle: text
     }
 
     return NextResponse.json(response)
@@ -118,7 +147,6 @@ export async function POST(request: NextRequest) {
     console.error('Step 07 - Sentence per line attribution failed:', error)
     
     const errorResponse: Step07SentencePerLineAttributionAIResponse = {
-      sentences: [],
       formattedArticle: ''
     }
 

@@ -9,32 +9,34 @@
 /* ==========================================================================*/
 
 // Next.js Core ---
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
-import { generateObject } from 'ai'
-import { openai } from '@ai-sdk/openai'
-import { z } from 'zod'
+import { generateObject } from "ai";
+import { z } from "zod";
 
 // Local Utilities ---
-import { buildPrompts } from '@/lib/utils'
+import { buildPrompts } from "@/lib/utils";
+import { getGlobalLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
-import { Step06ParaphraseArticleRequest, Step06ParaphraseArticleAIResponse } from '@/types/digest'
+import { Step06ParaphraseArticleRequest, Step06ParaphraseArticleAIResponse } from "@/types/digest";
+import { anthropic } from "@ai-sdk/anthropic";
 
 /* ==========================================================================*/
 // Configuration
 /* ==========================================================================*/
 
-const model = openai('gpt-4o-mini')
+// const model = openai("gpt-4o-mini");
+const model = anthropic("claude-4-sonnet-20250514");
 
 /* ==========================================================================*/
 // Schema
 /* ==========================================================================*/
 
 const ParaphrasedArticleSchema = z.object({
-  paraphrasedArticle: z.string().describe('The expertly paraphrased article with improved flow and clarity while maintaining source tags')
-})
+  paraphrasedArticle: z.string().describe("The expertly paraphrased article with improved flow and clarity while maintaining source tags"),
+});
 
 /* ==========================================================================*/
 // Prompts
@@ -82,32 +84,7 @@ FORMAT:
 Return a JSON object with:
 - paraphrasedArticle: The complete paraphrased article text as a string
 
-User: <instructions>
-You are an expert senior news editor writing an article that is an aggregation of multiple sources.  Reprint the provided line by line, but with a few small edits:
-
-- expertly paraphrase each line to avoid plagiarism (but keep source tags)
-- make sure the article flow smoothly from each topic (add transition phrases or move content around if absolutely necessary)
-- remove any blatant repetition
-
-The purpose is to clean up the writing and ensure that everything is fully paraphrased and credited in the source tags. 
-
-Here is the article to reprint line by line with the necessary edits & rephrasings:
-<article>
-{stepOutputs.write_article.text}
-
-</instructions>
-
-Source Articles List (this is reference content that was used for the initial draft):
-
-<source-content>
-Source tag: (Source 1)
-Source 1 {source.accredit}
-
-{source.description}
---
-{source.text}
-</source-content>
-`
+`;
 
 const USER_PROMPT = `
 <instructions>
@@ -121,21 +98,21 @@ The purpose is to clean up the writing and ensure that everything is fully parap
 
 Here is the article to reprint line by line with the necessary edits & rephrasings:
 <article>
-{draft_text}
-
+    {{draft_text}}
+</article>
 </instructions>
 
 Source Articles List (this is reference content that was used for the initial draft):
 
 <source-content>
 Source tag: (Source 1)
-Source 1 {source_accredit}
+Source 1 {{source_accredit}}
 
-{source_description}
+{{source_description}}
 --
-{source_text}
+{{source_text}}
 </source-content>
-`
+`;
 
 /* ==========================================================================*/
 // Route Handler
@@ -143,35 +120,31 @@ Source 1 {source_accredit}
 
 export async function POST(request: NextRequest) {
   try {
-    const body: Step06ParaphraseArticleRequest = await request.json()
+    const body: Step06ParaphraseArticleRequest = await request.json();
 
     // Validate required fields
     if (!body.sourceText || !body.articleText) {
       return NextResponse.json(
         {
-          paraphrasedArticle: ''
+          paraphrasedArticle: "",
         },
         { status: 400 }
-      )
+      );
     }
 
     // Build prompts using the helper function
-    const [systemPrompt, userPrompt] = buildPrompts(
-      SYSTEM_PROMPT,
-      USER_PROMPT,
-      {
-        'stepOutputs.write_article.text': body.articleText,
-        'source.accredit': body.sourceAccredit,
-        'source.description': body.sourceDescription,
-        'source.text': body.sourceText
-      },
-      {
-        draft_text: body.articleText,
-        source_accredit: body.sourceAccredit,
-        source_description: body.sourceDescription,
-        source_text: body.sourceText
-      }
-    )
+    const [systemPrompt, userPrompt] = buildPrompts(SYSTEM_PROMPT, USER_PROMPT, undefined, {
+      draft_text: body.articleText,
+      source_accredit: body.sourceAccredit,
+      source_description: body.sourceDescription,
+      source_text: body.sourceText,
+    });
+
+    // Log the formatted prompts if logger is available
+    const logger = getGlobalLogger();
+    if (logger) {
+      logger.logStepPrompts(6, "Paraphrase Article", systemPrompt, userPrompt);
+    }
 
     // Generate structured object using AI SDK
     const { object } = await generateObject({
@@ -179,22 +152,21 @@ export async function POST(request: NextRequest) {
       system: systemPrompt,
       prompt: userPrompt,
       schema: ParaphrasedArticleSchema,
-    })
+    });
 
     // Build response - only AI data
     const response: Step06ParaphraseArticleAIResponse = {
-      paraphrasedArticle: object.paraphrasedArticle
-    }
+      paraphrasedArticle: object.paraphrasedArticle,
+    };
 
-    return NextResponse.json(response)
-
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Step 06 - Paraphrase article failed:', error)
-    
-    const errorResponse: Step06ParaphraseArticleAIResponse = {
-      paraphrasedArticle: ''
-    }
+    console.error("Step 06 - Paraphrase article failed:", error);
 
-    return NextResponse.json(errorResponse, { status: 500 })
+    const errorResponse: Step06ParaphraseArticleAIResponse = {
+      paraphrasedArticle: "",
+    };
+
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }

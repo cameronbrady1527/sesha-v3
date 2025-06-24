@@ -12,19 +12,26 @@
 /* ==========================================================================*/
 
 // React core ----------------------------------------------------------------
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 
 // shadcn/ui components ------------------------------------------------------
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 // Icons ---------------------------------------------------------------------
-import { Info, Maximize2, Minimize2 } from "lucide-react";
+import { Info, Maximize2, Minimize2, Loader2 } from "lucide-react";
+
+// External Packages ---------------------------------------------------------
+import wordCount from "word-count";
 
 // Context -------------------------------------------------------------------
 import { useArticle } from "./article-context";
+
+// Local Modules -------------------------------------------------------------
+import { createNewVersionAction } from "@/actions/article";
 
 /* ==========================================================================*/
 // Helper Functions
@@ -39,54 +46,77 @@ import { useArticle } from "./article-context";
 /**
  * ArticleContent
  *
- * Simple component that displays sentences from context joined with newlines.
+ * Simple component that displays article content in a textarea.
  */
 function ArticleContent() {
-  const { currentArticle } = useArticle();
+  const { currentArticle, setCurrentVersion, hasChanges, updateCurrentArticle } = useArticle();
   const [expanded, setExpanded] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  // Get sentences and join with newlines
-  const content = (() => {
-    console.log("🔍 Content generation:", {
-      hasCurrentArticle: !!currentArticle,
-      sentences: currentArticle?.sentences,
-      sentencesLength: currentArticle?.sentences?.length,
-      content: currentArticle?.content,
-      contentType: typeof currentArticle?.content,
-      isContentArray: Array.isArray(currentArticle?.content)
-    });
-
-    // First, check if we have proper sentences field
-    if (currentArticle?.sentences && Array.isArray(currentArticle.sentences) && currentArticle.sentences.length > 0) {
-      console.log("✅ Using sentences field");
-      return currentArticle.sentences.join('\n\n');
-    } 
-    // Next, check if content field contains sentences array (saved in wrong field)
-    else if (currentArticle?.content && Array.isArray(currentArticle.content)) {
-      console.log("✅ Using sentences from content field (migration needed)");
-      return currentArticle.content.join('\n\n');
-    }
-    // If content is a string, use it
-    else if (currentArticle?.content && typeof currentArticle.content === 'string') {
-      console.log("⚠️ Using string content");
-      return currentArticle.content;
-    } 
-    // If content is an object (Lexical state), show message
-    else if (currentArticle?.content && typeof currentArticle.content === 'object') {
-      console.log("⚠️ Content is object (Lexical state)");
-      return "Content available but not in sentence format. Please regenerate this article.";
-    } 
-    else {
-      console.log("❌ No content available");
-      return '';
-    }
-  })();
+  // Get content directly from the content field
+  const content = currentArticle?.content || '';
   
-  console.log("🔍 Final content:", content.substring(0, 100) + "...");
-  const wordCount = content.trim() === "" ? 0 : content.trim().split(/\s+/).length;
+  const wordCountValue = wordCount(content);
   const maxWords = 50_000;
 
   const handleExpandToggle = () => setExpanded((p) => !p);
+
+  const handleContentChange = (newContent: string) => {
+    if (currentArticle) {
+      updateCurrentArticle({ content: newContent });
+    }
+  };
+
+  const handleSave = () => {
+    if (!currentArticle) {
+      toast.error("No article to save");
+      return;
+    }
+
+    if (!hasChanges) {
+      toast.error("No changes to save");
+      return;
+    }
+
+    console.log("💾 Save button clicked with:", {
+      articleId: currentArticle.id,
+      headline: currentArticle.headline,
+      blob: currentArticle.blob,
+      hasChanges
+    });
+
+    startTransition(async () => {
+      try {
+        const updateData = {
+          headline: currentArticle.headline,
+          blob: currentArticle.blob,
+          content: currentArticle.content,
+          status: "published" as const
+        };
+        
+        console.log("📤 Calling createNewVersionAction with:", {
+          currentArticle,
+          updateData
+        });
+        
+        const result = await createNewVersionAction(currentArticle, updateData);
+
+        console.log("📥 Server action result:", result);
+
+        if (result.success) {
+          setCurrentVersion(result.article?.version ?? currentArticle.version + 1);
+          toast.success("New version created successfully");
+          // No need to handle success further since the action redirects
+        } else {
+          console.log(result.error);
+          toast.error("Failed to create new version");
+        }
+      } catch (error) {
+        console.error("❌ Client error:", error);
+        toast.error("An unexpected error occurred");
+      }
+    });
+  };
 
   /* -------------------------------- UI --------------------------------- */
   return (
@@ -100,14 +130,9 @@ function ArticleContent() {
               <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
             </TooltipTrigger>
             <TooltipContent>
-              <p>Article sentences, one per line.</p>
+              <p>Article content from the pipeline.</p>
             </TooltipContent>
           </Tooltip>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            {wordCount.toLocaleString()}/{maxWords.toLocaleString()} words
-          </span>
         </div>
       </div>
 
@@ -116,11 +141,12 @@ function ArticleContent() {
         <Textarea
           id="article-content"
           value={content}
-          readOnly
-          placeholder="No sentences available."
+          onChange={(e) => handleContentChange(e.target.value)}
+          placeholder="No content available."
           className={`w-full resize-none transition-all duration-200 ${
-            expanded ? "min-h-[600px] max-h-[600px]" : "min-h-[400px] max-h-[400px]"
+            expanded ? "min-h-fit" : "min-h-[400px] max-h-[400px]"
           }`}
+          style={expanded ? { height: 'auto', minHeight: '400px' } : {}}
         />
         <Button
           variant="ghost"
@@ -129,6 +155,27 @@ function ArticleContent() {
           className="absolute top-2 right-2 h-6 w-6 p-0 bg-muted/50 hover:bg-muted/80 transition-colors cursor-pointer"
         >
           {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+        </Button>
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-between">
+        <span className="text-sm text-muted-foreground flex items-center">
+          {wordCountValue.toLocaleString()}/{maxWords.toLocaleString()} words
+        </span>
+        <Button 
+          className="bg-blue-500 hover:bg-blue-600 cursor-pointer text-white"
+          onClick={handleSave}
+          disabled={isPending || !hasChanges}
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save"
+          )}
         </Button>
       </div>
     </div>

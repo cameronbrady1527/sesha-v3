@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // External Packages ---------------------------------------------------------
-import { Info } from "lucide-react";
+import { Info, Maximize2, Minimize2 } from "lucide-react";
 
 // Context -------------------------------------------------------------------
 import { useDigest } from "./digest-context";
@@ -34,11 +34,12 @@ import { VerbatimCheckbox } from "./verbatim-checkbox";
 
 function SourceInputs() {
   // Import the Digest Context ----
-  const { sourceInput, setSourceInput, sourceUsage, setSourceUsage, canSubmitSource } = useDigest();
+  const { sourceInput, setSourceInput, sourceUsage, setSourceUsage, canSubmitSource, preset, setPreset } = useDigest();
 
   // Loading state for API call ----
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [instructionsExpanded, setInstructionsExpanded] = useState(false);
 
   /* -------------------------- debug effect ------------------------------ */
   useEffect(() => {
@@ -90,6 +91,7 @@ function SourceInputs() {
   };
 
   const handleUsageField = (field: keyof typeof sourceUsage, val: string | boolean) => setSourceUsage(field, val);
+  const handleInstructionsExpandToggle = () => setInstructionsExpanded((p) => !p);
 
   return (
     <div className="space-y-6 px-2">
@@ -116,11 +118,11 @@ function SourceInputs() {
         </div>
         <div className="flex items-end">
           <Button 
-            className="disabled:opacity-50 disabled:cursor-default" 
+            className="disabled:opacity-50 disabled:cursor-default bg-blue-500 hover:bg-blue-600" 
             onClick={handleGetRawText} 
             disabled={!canSubmitSource || isLoading}
           >
-            {isLoading ? 'Getting Text...' : 'Get Raw Text'}
+            {isLoading ? 'Getting Text...' : 'Input'}
           </Button>
         </div>
       </div>
@@ -138,7 +140,7 @@ function SourceInputs() {
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
             <Label htmlFor="source-description-input" className="text-sm font-medium">
-              Source Description
+              Source Description <span className="text-xs text-muted-foreground">optional</span>
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -158,7 +160,7 @@ function SourceInputs() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="accreditation-input" className="text-sm font-medium">
-                Accreditation
+                Accreditation <span className="text-xs text-muted-foreground">optional</span>
               </Label>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -195,6 +197,43 @@ function SourceInputs() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Third Row: Editor Instructions --- */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="editor-instructions" className="text-sm font-medium">
+            Editor Instructions <span className="text-xs text-muted-foreground">optional</span>
+          </Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Instructions for the AI to follow when creating your digest. This will save with other preset settings when you save a preset.</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="relative">
+          <Textarea
+            id="editor-instructions"
+            value={preset.instructions}
+            onChange={(e) => setPreset("instructions", e.target.value)}
+            placeholder="Enter editor instructions..."
+            className={`w-full resize-none transition-all duration-200 ${
+              instructionsExpanded ? "min-h-fit" : "min-h-[120px] max-h-[120px]"
+            }`}
+            style={instructionsExpanded ? { height: 'auto', minHeight: '120px' } : {}}
+          />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleInstructionsExpandToggle} 
+            className="absolute top-2 right-2 h-6 w-6 p-0 bg-muted/50 hover:bg-muted/80 transition-colors cursor-pointer"
+          >
+            {instructionsExpanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+          </Button>
         </div>
       </div>
     </div>

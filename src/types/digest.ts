@@ -116,6 +116,8 @@ export interface Step03WriteHeadlineAndBlobsRequest {
   sourceAccredit?: string;
   sourceDescription?: string;
   sourceText?: string;
+  summarizeFacts: string;
+  extractFactQuotes: string;
 }
 
 /** AI-only response from the route (no article management) */
@@ -218,15 +220,13 @@ export interface Step07SentencePerLineAttributionRequest {
   paraphrasedArticle: string;
 }
 
-/** AI-only response from the route (no article management) */
+// /** AI-only response from the route (no article management) */
 export interface Step07SentencePerLineAttributionAIResponse {
-  sentences: string[];
   formattedArticle: string;
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step07SentencePerLineAttributionResponse extends BaseStepResponse {  
-  sentences: string[];
   formattedArticle: string;
 }
 

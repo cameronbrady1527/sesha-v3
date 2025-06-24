@@ -79,9 +79,9 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
   console.log("🔍 ArticleProvider received articles:", articles.map(a => ({
     id: a.id,
     version: a.version,
-    sentences: a.sentences,
-    sentencesLength: a.sentences?.length,
-    sentencesType: typeof a.sentences
+    content: a.content,
+    contentLength: a.content?.length,
+    contentType: typeof a.content
   })));
 
   // Get the initial version (default to highest version if not specified)
@@ -130,16 +130,15 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
   const lastModified = currentArticle?.updatedAt || null;
   const createdByName = currentArticle?.createdByName || 'Unknown';
   
-  // Format blob outline as dashed list
+  // Format blob outline as bullet list
   const blobOutline = currentArticle?.blob 
-    ? currentArticle.blob.split('\n').map(blob => `- ${blob}`).join('\n\n')
+    ? currentArticle.blob.split('\n').map(blob => `• ${blob}`).join('\n\n')
     : '';
   
   // Check if there are changes from the original
   const hasChanges = originalArticle && currentArticle ? (
     originalArticle.headline !== currentArticle.headline ||
     originalArticle.blob !== currentArticle.blob ||
-    JSON.stringify(originalArticle.sentences) !== JSON.stringify(currentArticle.sentences) ||
     originalArticle.status !== currentArticle.status
   ) : false;
   
@@ -148,13 +147,13 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
     original: originalArticle ? { 
       headline: originalArticle.headline, 
       blob: originalArticle.blob,
-      sentences: originalArticle.sentences,
+      content: originalArticle.content,
       status: originalArticle.status
     } : null,
     current: currentArticle ? { 
       headline: currentArticle.headline, 
       blob: currentArticle.blob,
-      sentences: currentArticle.sentences,
+      content: currentArticle.content,
       status: currentArticle.status
     } : null
   });

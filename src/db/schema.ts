@@ -10,21 +10,7 @@
 /* Imports                                                                    */
 /* ==========================================================================*/
 
-import {
-  pgTable,
-  pgEnum,
-  uuid,
-  varchar,
-  text,
-  boolean,
-  timestamp,
-  json,
-  integer,
-  index,
-  uniqueIndex,
-  serial,
-  numeric,
-} from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, varchar, text, boolean, timestamp, integer, index, uniqueIndex, serial, numeric } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
 /* ==========================================================================*/
@@ -33,12 +19,7 @@ import { relations, sql } from "drizzle-orm";
 
 // Generic
 export const userRoleEnum = pgEnum("user_role", ["admin", "member"]);
-export const articleStatusEnum = pgEnum("article_status", [
-  "processing",
-  "failed",
-  "published",
-  "archived",
-]);
+export const articleStatusEnum = pgEnum("article_status", ["10%", "25%", "50%", "75%", "90%", "failed", "published", "archived"]);
 
 // Re-used enumerations
 export const blobsEnum = pgEnum("blobs", ["1", "2", "3", "4", "5", "6"]);
@@ -56,7 +37,7 @@ export const organizations = pgTable(
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 255 }).notNull().unique(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),  
   },
   (table) => [index("organizations_name_idx").on(table.name)]
 );
@@ -104,7 +85,7 @@ export const presets = pgTable(
 );
 
 /* -- 4. Articles (one row per version) -------------------------------------*/
-export const articles = pgTable(  
+export const articles = pgTable(
   "articles",
   {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -119,8 +100,8 @@ export const articles = pgTable(
     // ─────────────── Output snapshot ────────
     headline: varchar("headline", { length: 500 }),
     blob: text("blob"),
-    content: json("content"),
-    sentences: json("sentences").$type<string[]>(),
+    content: text("content"),
+    // sentences: json("sentences").$type<string[]>(),
     changeDescription: text("change_description"),
 
     // ─────────────── Input snapshot ────────
@@ -135,7 +116,7 @@ export const articles = pgTable(
     inputPresetLength: lengthEnum("input_preset_length").default("700-850").notNull(),
 
     // ─────────────── Status  ────────────────
-    status: articleStatusEnum("status").default("processing").notNull(),
+    status: articleStatusEnum("status").default("10%").notNull(),
 
     // ─────────────── Audit   ────────────────
     createdBy: uuid("created_by").references(() => users.id),
@@ -143,15 +124,7 @@ export const articles = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("articles_org_slug_version_idx").on(
-      table.orgId,
-      table.slug,
-      table.version,
-    ),
-    index("articles_org_slug_idx").on(table.orgId, table.slug),
-    index("articles_status_idx").on(table.status),
-  ]
+  (table) => [uniqueIndex("articles_org_slug_version_idx").on(table.orgId, table.slug, table.version), index("articles_org_slug_idx").on(table.orgId, table.slug), index("articles_status_idx").on(table.status)]
 );
 
 /* -- 5. Runs (spend & usage events) ---------------------------------------*/

@@ -12,8 +12,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // AI SDK Core ---
-import { generateObject } from 'ai'
-import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 
 // Local Utilities ---
@@ -22,12 +20,16 @@ import { getGlobalLogger } from '@/lib/pipeline-logger'
 
 // Local Types ----
 import { Step01ExtractFactQuotesRequest, Step01ExtractFactQuotesAIResponse } from '@/types/digest'
+import { anthropic } from '@ai-sdk/anthropic'
+import { generateObject } from 'ai'
 
 /* ==========================================================================*/
 // Configuration
 /* ==========================================================================*/
 
-const model = openai('gpt-4o-mini')
+// const model = openai('gpt-4o-mini')
+const model = anthropic("claude-4-sonnet-20250514");
+
 
 /* ==========================================================================*/
 // Schema
@@ -77,11 +79,11 @@ Examples:
 }
 `
 
-const USER_PROMPT = `Source: {source.accredit}
+const USER_PROMPT = `Source: {{source.accredit}}
 
-{instructions.description}
+{{source.description}}
 --
-{source.text}`
+{{source.text}}`
 
 /* ==========================================================================*/
 // Route Handler
@@ -109,11 +111,9 @@ export async function POST(request: NextRequest) {
       {
         source: {
           accredit: body.sourceAccredit,
-          text: body.sourceText
-        },
-        instructions: {
+          text: body.sourceText,
           description: body.sourceDescription
-        }
+        },
       }
     )
 
@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
       prompt: userPrompt,
       output: 'array',
       schema: QuoteSchema,
+      temperature: 0.3,
     })
 
     // Build response - only AI data

@@ -71,7 +71,7 @@ async function ArticlePage({
           {/* Start of Left Panel --- */}
           <ResizablePanel defaultSize={70} minSize={65} maxSize={75} className="">
             <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-12">
+              <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-8">
                 <ArticleHeader />
                 <ArticleOutline />
                 <ArticleContent />

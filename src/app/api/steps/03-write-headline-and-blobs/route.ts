@@ -9,34 +9,35 @@
 /* ==========================================================================*/
 
 // Next.js Core ---
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
-import { generateObject } from 'ai'
-import { openai } from '@ai-sdk/openai'
-import { z } from 'zod'
+import { generateObject } from "ai";
+import { z } from "zod";
 
 // Local Utilities ---
-import { buildPrompts } from '@/lib/utils'
-import { getGlobalLogger } from '@/lib/pipeline-logger'
+import { buildPrompts } from "@/lib/utils";
+import { createPipelineLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
-import { Step03WriteHeadlineAndBlobsRequest, Step03WriteHeadlineAndBlobsAIResponse } from '@/types/digest'
+import { Step03WriteHeadlineAndBlobsRequest, Step03WriteHeadlineAndBlobsAIResponse } from "@/types/digest";
+import { anthropic } from "@ai-sdk/anthropic";
 
 /* ==========================================================================*/
 // Configuration
 /* ==========================================================================*/
 
-const model = openai('gpt-4o-mini')
+// const model = openai("gpt-4o");
+const model = anthropic("claude-4-sonnet-20250514");
 
 /* ==========================================================================*/
 // Schema
 /* ==========================================================================*/
 
 const HeadlineAndBlobsSchema = z.object({
-  headline: z.string().describe('A punchy, attention-grabbing headline that captures the most newsworthy development'),
-  blobs: z.array(z.string()).describe('Array of short, punchy sentences covering core highlights of the story')
-})
+  headline: z.string().describe("A punchy, attention-grabbing headline that captures the most newsworthy development"),
+  blobs: z.array(z.string()).describe("Array of short, punchy sentences covering core highlights of the story"),
+});
 
 /* ==========================================================================*/
 // Prompts
@@ -54,26 +55,96 @@ RESPONSE FORMAT: Return a JSON object with:
 The user will specify the number of blobs to write and may give editor instructions that say the content or focus of the blobs.
 
 In general, the tone and structure of the headline and blobs should be something like this:
-`
+Headline: (insert punchy, attention-grabbing headline)
+Blob: (insert key detail or quote one)
+Blob: (insert another attention-grabbing detail or quote)
+...
+Blob: (insert another attention-grabbing detail or quote)
+
+The goal of each of the headline and blobs is to HOOK the reader and give them a quick sense of the most attention-worthy elements of the story, and make sure to follow the editor instructions if the editor suggests content for the blobs.
+
+Here some examples of well-written headlines and blobs:
+
+Headline: New York state Christian university fires two employees for using pronouns in their emails
+Blob: Dorm directors AREN'T transgender but wanted to use pronouns because they have confusing names
+Blob:  700 alumni protest in latest round of America's culture wars
+Blob: University insists refusal to remove pronouns was in 'breach of institutional policy'
+Blob:  'As Christians, we've forgotten how to care for people,' says worker
+
+Headline: 'It looked like the sky was on fire': Popocatepetl volcano eruption ash-fall closes two Mexico City airports
+Blob: US Embassy warns travelers not to go within 7.5miles of mountain
+Blob: Mexican authorities review evacuation plans but say there is no immediate danger
+Blob: Mount Etna eruption in Italy closes two Sicilian airports
+
+Headline: 'You're a f**** idiot': Nikki Haley lashes out in chaotic podcast interview
+Blob: The former presidential hopeful claims the Republican party has 'lost it's mind'
+
+Headline: Paris Hilton mourns death of 23-year-old 'iconic' chihuahua, Harajuku Bitch, with Instagram outpouring 
+Blob: 'Thank you for blessing my life', wrote the reality TV heiress
+Blob: Dog lived twice as long as most of its breed
+Blob: Another of her handbag dogs is still missing despite nine-month hunt
+
+Headline: 'British unis slip in global rankings as Imperial College London clings to No. 2 spot'
+Blob: World University Rankings 2026 released today show UK institutions losing ground to international rivals
+Blob: Oxford drops to 4th place globally, while Cambridge falls to 6th in latest league table
+Blob: UCL remains in top 10 at 9th, but other British universities fail to crack the upper echelons
+Blob: Massachusetts Institute of Technology retains crown as world's best university for another consecutive year
+
+Headline: China escalates tech war with US by banning products from America's biggest chipmaker for 'serious network security' risks
+Blob: Move against Micron Inc seen as retaliation for tech restrictions imposed by West on China
+Blob: Block comes day after G7 leaders roasted Beijing for human rights abuses, economic policies and saber-rattling over Taiwan
+Blob: But China still can't make its own chips and will likely to turn to South Korea for replacements
+
+Headline: Jimmy Fallon's Bad Days: Staffers blow whistle on chat show star's erratic behavior, backstage chaos and drinking issues
+Blob: Rolling Stone exposé reveals 'The Tonight Show' host Jimmy Fallon's alleged alcohol use and toxic workplace culture despite repeated HR complaints
+Blob: Staff regularly joked about wanting to kill themselves and they used dressing rooms as 'crying rooms'
+
+Headline: 'Five-alarm fire': Survey shows 63% of American Jews feel less secure than ever as antisemitism surges post-Israel Hamas war
+Blob: 25% report being targeted by antisemitism in the past year
+Blob: 46% say they have changed their behaviour
+
+Headline: Is the pen ACTUALLY mightier than the sword? Novelist Govind Nume pens NYT op-ed suggesting artists join the army if they want to contribute to society
+Blob: The three-time National Book Award winner describes his journey from artist to army hero
+Blob: Nume decries what he describes as a "general trend toward complacency" in Gen Z
+Blob: "There's a time for art, and then there's a time for action," Nume writes
+
+Headline: Short men have HIGHER performance in tech companies according to new research
+Blob: Men shorter than five foot seven earned 30% more than their taller counterparts throughout the Harvard Business Review study
+Blob: An "inverse height-to-earnings" ratio held true across races, though was most promiment in Caucasian and African-American workers
+Blob: The study reviewed the heights, salaries, and job titles across 30,000 tech workers who identify as men
+
+See how these blobs and headlines are factual AND interesting? Make sure the most interesting, dramatic, or unexpected and newsworthy facts and quotes are turned into short, engaging headlines and blobs. If headlines or blobs are suggested, they must be used. IMPORTANT: Even if the input is hard science, a dry court ruling, or another dense text, the headline and blobs MUST be written in pithy, easy-to-understand english.
+
+Generate however many blobs the user requested.
+
+All quotes must be SINGLE quotation marks.
+`;
 
 const USER_PROMPT = `
-Number of Blobs: {num_blobs}
-{manual_headline_block}
+Number of Blobs: {{num_blobs}}
+{{manual_headline_block}}
 
 IMPORTANT EDITOR NOTES:  
-{editor_notes}
+{{editor_notes}}
 
 Additional editor instructions:
 Each blob MUST start with a different word
 The blobs must be short, punchy, and written in a newsy style (not dry)
 Make sure to include the author or context of the source article in the first blob. (Eg, "... in a piece by X author in Y publication")
 Even if the input is hard science, a dry court ruling, or another dense text, the headline and blobs MUST be written in pithy, easy‑to‑understand english. For example, instead of "In a groundbreaking judgement addressing the multifaceted elements of electric vehicles, a Michigan court declared that..." just write "A Michigan court ruled X" 
+It is VITAL that the blobs are very short (10-20 words) and highly engaging/punchy even when using quotes as color
 
-Source: {source_accredit}
-{source_description}
+Source Content:
+
+Source: {{source_accredit}}
+{{source_description}}
 --
-{source_text}
-`
+Facts and summary of the source content to use as reference:
+<summary>
+{{summarize_facts}}
+Quotes that may be used as additional reference:
+<quote-list>
+{{extract_fact_quotes}}`;
 
 /* ==========================================================================*/
 // Route Handler
@@ -81,23 +152,21 @@ Source: {source_accredit}
 
 export async function POST(request: NextRequest) {
   try {
-    const body: Step03WriteHeadlineAndBlobsRequest = await request.json()
+    const body: Step03WriteHeadlineAndBlobsRequest = await request.json();
 
     // Validate required fields - allow empty strings but not undefined/null
     if (body.instructions === undefined || body.instructions === null) {
       return NextResponse.json(
         {
-          headline: '',
-          blobs: []
+          headline: "",
+          blobs: [],
         },
         { status: 400 }
-      )
+      );
     }
 
     // Resolve dynamic pieces for the user prompt
-    const manualHeadlineBlock = body.headline 
-      ? `Manual Headline (you must use this headline):\n${body.headline}` 
-      : ''
+    const manualHeadlineBlock = body.headline ? `Manual Headline (you must use this headline):\n${body.headline}` : "";
 
     // Build prompts using the helper function
     const [systemPrompt, userPrompt] = buildPrompts(
@@ -107,18 +176,18 @@ export async function POST(request: NextRequest) {
       {
         num_blobs: body.blobs.toString(),
         manual_headline_block: manualHeadlineBlock,
-        editor_notes: body.instructions,
-        source_accredit: body.sourceAccredit || '',
-        source_description: body.sourceDescription || '',
-        source_text: body.sourceText || ''
+        editor_notes: body.instructions,  
+        source_accredit: body.sourceAccredit || "",
+        source_description: body.sourceDescription || "",
+        source_text: body.sourceText || "",
+        summarize_facts: body.summarizeFacts || "",
+        extract_fact_quotes: body.extractFactQuotes || "",
       }
-    )
+    );
 
-    // Log the formatted prompts if logger is available
-    const logger = getGlobalLogger()
-    if (logger) {
-      logger.logStepPrompts(3, 'Write Headline and Blobs', systemPrompt, userPrompt)
-    }
+    // Create a route-specific logger for this step
+    const logger = createPipelineLogger(`route-step03-${Date.now()}`);
+    logger.logStepPrompts(3, "Write Headline and Blobs", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
     const { object } = await generateObject({
@@ -126,24 +195,27 @@ export async function POST(request: NextRequest) {
       system: systemPrompt,
       prompt: userPrompt,
       schema: HeadlineAndBlobsSchema,
-    })
+      temperature: 0.3,
+    });
 
     // Build response - only AI data
     const response: Step03WriteHeadlineAndBlobsAIResponse = {
       headline: body.headline ? body.headline : object.headline,
-      blobs: object.blobs
-    }
+      blobs: object.blobs,
+    };
 
-    return NextResponse.json(response)
+    // Close the logger to ensure logs are flushed
+    await logger.close();
 
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Step 03 - Write headline and blobs failed:', error)
-    
-    const errorResponse: Step03WriteHeadlineAndBlobsAIResponse = {
-      headline: '',
-      blobs: []
-    }
+    console.error("Step 03 - Write headline and blobs failed:", error);
 
-    return NextResponse.json(errorResponse, { status: 500 })
+    const errorResponse: Step03WriteHeadlineAndBlobsAIResponse = {
+      headline: "",
+      blobs: [],
+    };
+
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }

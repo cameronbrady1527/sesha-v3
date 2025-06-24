@@ -1,4 +1,4 @@
-import { ArticleDataTable } from "@/components/library/data-table";
+import { LibraryClient } from "@/components/library/library-client";
 import { LibraryLoadingSkeleton } from "@/components/library/skeleton";
 import { getOrgArticlesCount, getOrgArticlesMetadataPaginated } from "@/db/dal";
 import { getAuthenticatedUserServer } from "@/lib/supabase/server";
@@ -11,7 +11,8 @@ export default async function LibraryPage() {
     redirect("/login");
   }
 
-  const articles = await getOrgArticlesMetadataPaginated(user.orgId);
+  // Load initial articles
+  const initialArticles = await getOrgArticlesMetadataPaginated(user.orgId, 20, 0);
   const totalCount = await getOrgArticlesCount(user.orgId);
 
   return (
@@ -21,7 +22,10 @@ export default async function LibraryPage() {
       {/* Start of Data Interface --- */}
       <Suspense fallback={<LibraryLoadingSkeleton />}>
         <div className="space-y-4 pt-4">
-          <ArticleDataTable articles={articles} totalCount={totalCount} />
+          <LibraryClient 
+            initialArticles={initialArticles} 
+            totalCount={totalCount} 
+          />
         </div>
       </Suspense>
 
