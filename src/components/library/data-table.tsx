@@ -151,7 +151,7 @@ function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps
       return;
     }
 
-    router.push(`/article?slug=${encodeURIComponent(row.slug)}`);
+    router.push(`/article?slug=${encodeURIComponent(row.slug)}&version=${row.version}`);
   };
 
   /* ----------------------------- Render ---------------------------------- */

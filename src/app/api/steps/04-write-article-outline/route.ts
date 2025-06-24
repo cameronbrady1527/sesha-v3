@@ -9,34 +9,30 @@
 /* ==========================================================================*/
 
 // Next.js Core ---
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
-import { generateObject } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
-import { z } from 'zod'
+import { generateText } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
 
 // Local Utilities ---
-import { buildPrompts } from '@/lib/utils'
-import { getGlobalLogger } from '@/lib/pipeline-logger'
+import { buildPrompts } from "@/lib/utils";
+import { getGlobalLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
-import { Step04WriteArticleOutlineRequest, Step04WriteArticleOutlineAIResponse } from '@/types/digest'
+import { Step04WriteArticleOutlineRequest, Step04WriteArticleOutlineAIResponse } from "@/types/digest";
 
 /* ==========================================================================*/
 // Configuration
 /* ==========================================================================*/
 
 // const model = openai('gpt-4o')
-const model = anthropic("claude-4-sonnet-20250514");
+// const model = anthropic("claude-4-sonnet-20250514");
+const model = anthropic("claude-3-opus-20240229");
 
 /* ==========================================================================*/
 // Schema
 /* ==========================================================================*/
-
-const OutlineSchema = z.object({
-  outline: z.array(z.string()).describe('Array of key points for the article outline, each should be a complete sentence describing a key point of the story')
-})
 
 /* ==========================================================================*/
 // Prompts
@@ -147,7 +143,7 @@ NOTE: Do not write a conclusion or summary
 ####
 
 Use this summary to determine the angle of how to report on the source content:
-{{stepOutputs.summarize_facts.text}}
+{{summarize_facts}}
 `;
 
 const USER_PROMPT = `
@@ -178,10 +174,10 @@ Make sure to start with the core news story and flashiest detail (a STRONG PUNCH
 ###
 
 Headline & Blobs (to help guide article):
-{{stepOutputs.headlinesAndBlobs.text}}
+{{headlines_and_blobs}}
 
 Editor Notes (IMPORTANT): 
-{{editorInstructionsBlock}}
+{{editor_instructions}}
 
 Make sure to include the author or context of the source in key point one (was it an opinion piece by x author? was it a study published by x group? etc)
 
@@ -192,18 +188,18 @@ Make sure that the outline and article is extremely long and comprehensive, and 
 
 Here are source articles that should be used for reference:
 
-Source 1: {{source.accredit}}
-Description: {{input.description}}
+Source 1: {{source_accredit}}
+Description: {{source_description}}
 --
-{{initialSources.text}}
+{{source_text}}
 
 ###
 Summary and facts to use as reference:
 <summary>
-{{stepOutputs.paraphrasingFacts.text}}
+{{summarize_facts}}
 
 Quotes to use as additional reference:
-{{stepOutputs.factsBitSplitting.text}}
+{{extract_fact_quotes}}
 `;
 
 /* ==========================================================================*/
@@ -218,7 +214,7 @@ export async function POST(request: NextRequest) {
     if (!body.sourceText) {
       return NextResponse.json(
         {
-          outline: [],
+          outline: "",
         },
         { status: 400 }
       );
@@ -235,18 +231,16 @@ export async function POST(request: NextRequest) {
       SYSTEM_PROMPT,
       USER_PROMPT,
       {
-        "stepOutputs.summarize_facts.text": body.summarizeFactsText || "",
+        summarize_facts: body.summarizeFactsText || "",
       },
       {
-        "stepOutputs.headlinesAndBlobs.text": body.headlineAndBlobsText || "",
-        editorInstructionsBlock: editorInstructionsBlock,
-        source: {
-          accredit: body.sourceAccredit || "",
-        },
-        "input.description": body.sourceDescription || "",
-        "initialSources.text": body.sourceText || "",
-        "stepOutputs.paraphrasingFacts.text": body.summarizeFactsText || "",
-        "stepOutputs.factsBitSplitting.text": body.extractFactQuotesText || "",
+        headlines_and_blobs: body.headlineAndBlobsText || "",
+        editor_instructions: editorInstructionsBlock,
+        source_accredit: body.sourceAccredit || "",
+        source_description: body.sourceDescription || "",
+        source_text: body.sourceText || "",
+        summarize_facts: body.summarizeFactsText || "",
+        extract_fact_quotes: body.extractFactQuotesText || "",
       }
     );
 
@@ -257,17 +251,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate structured object using AI SDK
-    const { object } = await generateObject({
+    const { text: outline } = await generateText({
       model,
       system: systemPrompt,
       prompt: userPrompt,
-      schema: OutlineSchema,
       temperature: 0.6,
     });
 
     // Build response - only AI data
     const response: Step04WriteArticleOutlineAIResponse = {
-      outline: object.outline,
+      outline: outline,
     };
 
     return NextResponse.json(response);
@@ -275,7 +268,7 @@ export async function POST(request: NextRequest) {
     console.error("Step 04 - Write article outline failed:", error);
 
     const errorResponse: Step04WriteArticleOutlineAIResponse = {
-      outline: [],
+      outline: "",
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

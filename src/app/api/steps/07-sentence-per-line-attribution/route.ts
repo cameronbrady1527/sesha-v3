@@ -9,23 +9,23 @@
 /* ==========================================================================*/
 
 // Next.js Core ---
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
-import { generateText } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { generateText } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
 
 // Local Utilities ---
-import { buildPrompts } from '@/lib/utils'
+import { buildPrompts } from "@/lib/utils";
 
 // Local Types ----
-import { Step07SentencePerLineAttributionAIResponse, Step07SentencePerLineAttributionRequest } from '@/types/digest'
+import { Step07SentencePerLineAttributionAIResponse, Step07SentencePerLineAttributionRequest } from "@/types/digest";
 
 /* ==========================================================================*/
 // Configuration
 /* ==========================================================================*/
 
-const model = openai('gpt-4o')
+const model = anthropic("claude-3-opus-20240229");
 
 /* ==========================================================================*/
 // Schema
@@ -90,7 +90,7 @@ This is his second retirement in two years.
 
 Nume turns 30 in November, according to CNN.
 </example>
-`
+`;
 
 const USER_PROMPT = `
 <article>
@@ -98,7 +98,7 @@ const USER_PROMPT = `
 </article>
 
 DO NOT include any other text or comments in your response, or any <output> tags.
-`
+`;
 
 /* ==========================================================================*/
 // Route Handler
@@ -106,16 +106,16 @@ DO NOT include any other text or comments in your response, or any <output> tags
 
 export async function POST(request: NextRequest) {
   try {
-    const body: Step07SentencePerLineAttributionRequest = await request.json()
+    const body: Step07SentencePerLineAttributionRequest = await request.json();
 
     // Validate required fields
     if (!body.paraphrasedArticle) {
       return NextResponse.json(
         {
-          formattedArticle: ''
+          formattedArticle: "",
         },
         { status: 400 }
-      )
+      );
     }
 
     // Build prompts using the helper function
@@ -124,32 +124,45 @@ export async function POST(request: NextRequest) {
       USER_PROMPT,
       undefined, // No system variables needed
       {
-        draft_text: body.paraphrasedArticle
+        draft_text: body.paraphrasedArticle,
       }
-    )
+    );
 
     // Generate structured object using AI SDK
     const { text } = await generateText({
       model,
       system: systemPrompt,
-      prompt: userPrompt,
+      messages: [
+        {
+          role: "user",
+          content: userPrompt,
+        },
+        {
+          role: "assistant",
+          content: "<output>",
+        },
+      ],
       temperature: 0.2,
-    })
+    });
+
+    // Clean up the response by removing any <output></output> tags and trimming whitespace
+    const cleanedText = text
+      .replace(/<\/?output[^>]*>/g, '') // Remove any <output> or </output> tags
+      .trim(); // Remove leading and trailing whitespace
 
     // Build response - only AI data
     const response: Step07SentencePerLineAttributionAIResponse = {
-      formattedArticle: text
-    }
+      formattedArticle: cleanedText,
+    };
 
-    return NextResponse.json(response)
-
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Step 07 - Sentence per line attribution failed:', error)
-    
-    const errorResponse: Step07SentencePerLineAttributionAIResponse = {
-      formattedArticle: ''
-    }
+    console.error("Step 07 - Sentence per line attribution failed:", error);
 
-    return NextResponse.json(errorResponse, { status: 500 })
+    const errorResponse: Step07SentencePerLineAttributionAIResponse = {
+      formattedArticle: "",
+    };
+
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }

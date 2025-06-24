@@ -12,8 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
-import { generateObject } from "ai";
-import { z } from "zod";
+import { generateText } from "ai";
 
 // Local Utilities ---
 import { buildPrompts } from "@/lib/utils";
@@ -28,16 +27,12 @@ import { anthropic } from "@ai-sdk/anthropic";
 /* ==========================================================================*/
 
 // const model = openai("gpt-4o");
-const model = anthropic("claude-4-sonnet-20250514");
-
+// const model = anthropic("claude-4-sonnet-20250514");
+const model = anthropic("claude-3-opus-20240229");
 
 /* ==========================================================================*/
 // Schema
 /* ==========================================================================*/
-
-const SummarySchema = z.object({
-  summary: z.string().describe("A detailed and comprehensive 200-word summary of the key facts, events, and content")
-});
 
 /* ==========================================================================*/
 // Prompts
@@ -128,17 +123,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate structured object using AI SDK
-    const { object } = await generateObject({
+    const { text: summary } = await generateText({
       model,
       system: systemPrompt,
-      prompt: userPrompt,
-      schema: SummarySchema,
-      temperature: 0.2,
+      messages: [
+        {
+          role: "user",
+          content: userPrompt,
+        },
+        {
+          role: "assistant",
+          content: "Here is a detailed and comprehensive 200-word summary of the key facts, events, and content in the provided source material. I have used newly-authored sentences to avoid plagiarism, but everything is based fully on the provided source-1-content. <summary>",
+        },
+      ],
+      temperature: 0.3,
     });
 
     // Build response - only AI data
     const response: Step02SummarizeFactsAIResponse = {
-      summary: object.summary,
+      summary: summary,
     };
 
     return NextResponse.json(response);

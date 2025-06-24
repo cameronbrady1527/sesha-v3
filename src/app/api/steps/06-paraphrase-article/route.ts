@@ -12,8 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
-import { generateObject } from "ai";
-import { z } from "zod";
+import { generateText } from "ai";
 
 // Local Utilities ---
 import { buildPrompts } from "@/lib/utils";
@@ -28,15 +27,9 @@ import { anthropic } from "@ai-sdk/anthropic";
 /* ==========================================================================*/
 
 // const model = openai("gpt-4o-mini");
-const model = anthropic("claude-4-sonnet-20250514");
+// const model = anthropic("claude-4-sonnet-20250514");
+const model = anthropic("claude-3-opus-20240229");
 
-/* ==========================================================================*/
-// Schema
-/* ==========================================================================*/
-
-const ParaphrasedArticleSchema = z.object({
-  paraphrasedArticle: z.string().describe("The expertly paraphrased article with improved flow and clarity while maintaining source tags"),
-});
 
 /* ==========================================================================*/
 // Prompts
@@ -147,16 +140,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate structured object using AI SDK
-    const { object } = await generateObject({
+    const { text: paraphrasedArticle } = await generateText({
       model,
       system: systemPrompt,
-      prompt: userPrompt,
-      schema: ParaphrasedArticleSchema,
+      messages: [
+        {
+          role: "user",
+          content: userPrompt,
+        },
+        {
+          role: "assistant",
+          content: "Here is the article with each line expertly rephrased, all direct quotes kept 100% verbatim, and any necessary transitions added: <article>",
+        },
+      ],
+      temperature: 0.2,
     });
 
     // Build response - only AI data
     const response: Step06ParaphraseArticleAIResponse = {
-      paraphrasedArticle: object.paraphrasedArticle,
+      paraphrasedArticle: paraphrasedArticle,
     };
 
     return NextResponse.json(response);

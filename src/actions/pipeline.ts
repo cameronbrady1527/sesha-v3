@@ -186,7 +186,7 @@ async function step01ExtractFactQuotes(articleId: string, request: DigestRequest
       articleId,
       stepNumber: 1,
       success: false,
-      quotes: []
+      quotes: ""
     };
   }
 }
@@ -301,7 +301,7 @@ async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestReq
       sourceDescription: request.source.description,
       sourceText: request.source.sourceText,
       summarizeFacts: step2Result.summary,
-      extractFactQuotes: JSON.stringify(step1Result.quotes)
+      extractFactQuotes: step1Result.quotes
     };
 
     // Log the step request
@@ -444,7 +444,7 @@ async function step04WriteArticleOutline(articleId: string, request: DigestReque
       articleId,
       stepNumber: 4,
       success: false,
-      outline: []
+      outline: ''
     };
   }
 }
@@ -476,7 +476,7 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
       // Accumulated context from previous steps
       headlineAndBlobsText: `Headline: ${step3Result.headline}\nBlobs: ${step3Result.blobs.join('\n')}`,
       summarizeFactsText: step2Result.summary,
-      articleOutlineText: step4Result.outline.join('\n')
+      articleOutlineText: step4Result.outline
     };
 
     // Log the step request
@@ -718,7 +718,7 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
  */
 async function executeDigestPipeline(request: DigestRequest): Promise<PipelineResponse> {
   console.log('🌟 Starting Digest Pipeline');
-  console.log('📥 Request:', JSON.stringify(request, null, 2));
+  // console.log('📥 Raw Request:', JSON.stringify(request, null, 2));
 
   // Initialize pipeline logger
   const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`)

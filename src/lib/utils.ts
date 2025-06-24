@@ -22,8 +22,6 @@ export function cn(...inputs: ClassValue[]) {
  */
 function formatPrompt(promptTemplate: string, variables?: Record<string, unknown>): string {
   console.log("🔧 formatPrompt - STARTING");
-  console.log("📥 formatPrompt - Template:", promptTemplate.substring(0, 200) + "...");
-  console.log("📥 formatPrompt - Variables:", JSON.stringify(variables, null, 2));
 
   if (!variables) {
     console.log("⚠️ formatPrompt - No variables provided, returning template as-is");
@@ -37,7 +35,6 @@ function formatPrompt(promptTemplate: string, variables?: Record<string, unknown
     const formatted = Mustache.render(promptTemplate, variables);
     
     console.log("✅ formatPrompt - COMPLETED");
-    console.log("📤 formatPrompt - Result length:", formatted.length);
     return formatted;
   } catch (error) {
     console.error("❌ formatPrompt - ERROR:", error);
@@ -61,8 +58,6 @@ export function buildPrompts(systemPromptTemplate: string, userPromptTemplate: s
   console.log("🏗️ buildPrompts - STARTING");
   console.log("📥 buildPrompts - System template length:", systemPromptTemplate.length);
   console.log("📥 buildPrompts - User template length:", userPromptTemplate.length);
-  console.log("📥 buildPrompts - System variables:", JSON.stringify(systemVariables, null, 2));
-  console.log("📥 buildPrompts - User variables:", JSON.stringify(userVariables, null, 2));
 
   try {
     console.log("🔄 buildPrompts - Building system prompt...");
@@ -72,8 +67,6 @@ export function buildPrompts(systemPromptTemplate: string, userPromptTemplate: s
     const userPrompt = formatPrompt(userPromptTemplate, userVariables);
 
     console.log("✅ buildPrompts - COMPLETED");
-    console.log("📤 buildPrompts - System prompt length:", systemPrompt.length);
-    console.log("📤 buildPrompts - User prompt length:", userPrompt.length);
 
     return [systemPrompt, userPrompt];
   } catch (error) {

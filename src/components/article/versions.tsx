@@ -15,6 +15,7 @@ import React from "react";
 
 // Next.js ---
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // Shadcn UI ---
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,15 @@ function VersionCard({ version, headline, createdAt, isActive, onClick }: Versio
  * Uses article context for version data and switching.
  */
 function Versions() {
+  const router = useRouter();
   const { versionMetadata, currentVersion, setCurrentVersion, currentArticle } = useArticle();
+  
+  // Navigate when version changes
+  React.useEffect(() => {
+    if (currentArticle) {
+      router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${currentVersion}`);
+    }
+  }, [currentVersion, currentArticle?.slug, router, currentArticle]);
   
   return (
     <div className="h-full flex flex-col">

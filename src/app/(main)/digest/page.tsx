@@ -140,6 +140,8 @@ async function DigestPage({
           <ResizablePanel defaultSize={65} minSize={60} maxSize={70} className="">
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-12">
+
+                {/* Duplicaye these because they're componnts within components/digest. Duplicate them into components/aggregator */}
                 <BasicDigestInputs />
                 <SourceInputs />
                 <TextFromSource />

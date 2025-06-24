@@ -12,9 +12,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // AI SDK Core ---
-import { generateObject } from "ai";
+import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { z } from "zod";
 
 // Local Utilities ---
 import { buildPrompts } from "@/lib/utils";
@@ -29,23 +28,17 @@ import type { LengthRange } from "@/db/schema";
 /* ==========================================================================*/
 
 // const model = openai("gpt-4o");
-const model = anthropic("claude-4-sonnet-20250514");
+const model = anthropic("claude-3-opus-20240229");
 
 // Word target mapping
 const WORD_TARGET_MAP: Record<LengthRange, number> = {
-  "100-250": 100,
-  "400-550": 400,
-  "700-850": 700,
-  "1000-1200": 1000,
+  "100-250": 250,
+  "400-550": 600,
+  "700-850": 900,
+  "1000-1200": 1300,
 };
 
-/* ==========================================================================*/
-// Schema
-/* ==========================================================================*/
 
-const ArticleSchema = z.object({
-  article: z.string().describe("The complete article text, expertly reported and thorough"),
-});
 
 /* ==========================================================================*/
 // Prompts
@@ -57,7 +50,7 @@ Write an article that is a digest or reporting on a much longer piece of text (s
 
 The given text may be court documents, original reporting, a blog post, or some other longer piece of writing. We are expert journalists editing an article that is a digest of the original text as a news story, ONLY using facts quotes and details from the input source (Source 1).
 
-SPECIFIC INSTRUCTIONS: Write an expertly reported, thorough article that is {{wordTarget}} words long. Use the facts and direct quotes from people quoted in the source article (Source 1) to write an extremely thorough, well-structured, detailed news article. Follow the editor instructions and suggestions.
+SPECIFIC INSTRUCTIONS: Write an expertly reported, thorough article that is {{word_target}} words long. Use the facts and direct quotes from people quoted in the source article (Source 1) to write an extremely thorough, well-structured, detailed news article. Follow the editor instructions and suggestions.
 
 Use each of the interesting direct quotes from people and facts from the source articles. Move logically through the article by introducing the most important and interesting events, details, and direct quotes (inside quotation marks), and then add more and more information and quotes from the source content about each element of the input content until the article is finished.
 
@@ -73,13 +66,12 @@ NOTES, CONTENT, & ARTICLE STRUCTURE:
 - Let the facts and direct credited quotes tell the story, do not editorialize
 - Use spartan writing that is extremely clear and concise
 - You may ONLY reference facts, quotes (with credits), and details provided in Source 1. You may not add any other quotes, analysis, or context.
-{{mandatoryInstructions}}
 
 LENGTH:
-The long, detailed article should be {{wordTarget}} words long with many quotes. Use the full {{wordTarget}} word length
+The long, detailed article should be {{word_target}} words long with many quotes. Use the full {{word_target}} word length. this is crucial.
 
 Editor notes (IMPORTANT):
-{{input.instructions}}
+{{editor_instructions}}
 
 TONE AND STYLE:
 The tone is extremely straightforward and spartan. Do not use any adverbs or editorializing. Make sure the core facts and conflict are understandable by simplifying legal jargon and writing clearly and simply
@@ -93,7 +85,7 @@ IMPORTANT:
 EXAMPLE ARTICLES
 Here are example articles you've written in the past on completely different source content prompts. They are the correct length and writing style, and they move logically through the news story. These are just examples from other inputs.
 
-{{exampleArticles}}
+{{example_articles}}
 
 FORMAT:
 Return a JSON object with:
@@ -105,7 +97,7 @@ Write an article that is a digest or reporting on a much longer piece of text (s
 
 IMPORTANT: You must write the article in a way that is easy for the general public to understand. Simplify complex concepts in everyday language. Add a source tag after each line like this: (Source 1)
 
-Length: The article should be around {{wordTarget}} words and extremely thorough.
+Length: The article should be around {{word_target}} words and extremely thorough.
 
 Headline & Blobs:
 {{headline_blobs}}
@@ -122,7 +114,7 @@ Description: {{source_description}}
 --
 {{source_text}}
 
-BEFORE YOUR FINAL OUTPUT, ENSURE YOU ADHERE TO THE TARGET WORD COUNT PROVIDED OF {{wordTarget}} WORDS.
+BEFORE YOUR FINAL OUTPUT, ENSURE YOU ADHERE TO THE TARGET WORD COUNT PROVIDED OF {{word_target}} WORDS. THIS IS CRITICAL.
 `;
 
 /* ==========================================================================*/
@@ -147,7 +139,6 @@ export async function POST(request: NextRequest) {
     const wordTarget = WORD_TARGET_MAP[body.length] || 700;
 
     // Build mandatory instructions block
-    const mandatoryInstructions = body.instructions ? "- You MUST follow the mandatory editor instructions" : "";
 
     // Build example articles based on word target
     const exampleArticles = getExampleArticles(wordTarget);
@@ -157,13 +148,12 @@ export async function POST(request: NextRequest) {
       SYSTEM_PROMPT,
       USER_PROMPT,
       {
-        wordTarget: wordTarget.toString(),
-        mandatoryInstructions: mandatoryInstructions,
-        "input.instructions": body.instructions || "",
-        exampleArticles: exampleArticles,
+        word_target: wordTarget.toString(),
+        editor_instructions: body.instructions || "",
+        example_articles: exampleArticles,
       },
       {
-        wordTarget: wordTarget.toString(),
+        word_target: wordTarget.toString(),
         headline_blobs: body.headlineAndBlobsText || "",
         summary_text: body.summarizeFactsText || "",
         outline_text: body.articleOutlineText || "",
@@ -180,17 +170,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate structured object using AI SDK
-    const { object } = await generateObject({
+    const { text: article } = await generateText({
       model,
       system: systemPrompt,
       prompt: userPrompt,
-      schema: ArticleSchema,
       temperature: 0.8,
     });
 
     // Build response - only AI data
     const response: Step05WriteArticleAIResponse = {
-      article: object.article,
+      article: article,
     };
 
     return NextResponse.json(response);
@@ -207,7 +196,7 @@ export async function POST(request: NextRequest) {
 
 // Helper function to get example articles based on word target
 function getExampleArticles(wordTarget: number): string {
-  if (wordTarget === 100) {
+  if (wordTarget === 250) {
     return `
 Example 1 (this is just an example article):
 <example-article>
@@ -268,7 +257,7 @@ The restrictions come after Trump's statements led to increased security concern
 Trump's legal team pointed to his general restraint in commenting on individuals in this specific case, contrasting it with the volume of posts targeting people in other proceedings. (Source 1)
 </example-article>
 `;
-  } else if (wordTarget === 400) {
+  } else if (wordTarget === 600) {
     return `
 Example 1 (this is just an example article):
 <example-article>
@@ -377,7 +366,7 @@ The allegations and evidence of illegal activity at Rise and Shine supermarket u
 There is a right to appeal the decision within 21 days of receiving written notice. (Source 1)
 </example-article>
 `;
-  } else if (wordTarget === 700) {
+  } else if (wordTarget === 900) {
     return `
 Example 1 (this is just an example article):
 <example-article>

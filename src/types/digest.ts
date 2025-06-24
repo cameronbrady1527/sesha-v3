@@ -65,20 +65,14 @@ export interface Step01ExtractFactQuotesRequest {
   sourceText: string;
 }
 
-/** Quote with attribution context */
-export interface QuoteWithAttribution {
-  quote: string;
-  context: string;
-}
-
 /** AI-only response from the route (no article management) */
 export interface Step01ExtractFactQuotesAIResponse {
-  quotes: QuoteWithAttribution[];
+  quotes: string;
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step01ExtractFactQuotesResponse extends BaseStepResponse {
-  quotes: QuoteWithAttribution[];
+  quotes: string;
 }
 
 /* ==========================================================================*/
@@ -151,12 +145,12 @@ export interface Step04WriteArticleOutlineRequest {
 
 /** AI-only response from the route (no article management) */
 export interface Step04WriteArticleOutlineAIResponse {
-  outline: string[];
+  outline: string;
 }
 
 /** Full response for the pipeline (includes article management) */
 export interface Step04WriteArticleOutlineResponse extends BaseStepResponse {
-  outline: string[];
+  outline: string;
 }
 
 /* ==========================================================================*/
