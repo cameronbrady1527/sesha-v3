@@ -46,10 +46,25 @@ const HeadlineAndBlobsSchema = z.object({
 const SYSTEM_PROMPT = `
 We are expert journalists in the process of writing an article that is a digest of a much longer text. Write a headline and set of additional sentences (called blobs) based on these instructions and the source content. 
 
-INSTRUCTIONS FOR THE HEADLINE AND BLOBS: The headline and blobs should encompass the most interesting and most timely elements or developments in the article. The headline and blobs should be short, engaging and magnetic. Blobs can include direct quotes when mentioning striking/notable things people have said but must be short and punchy. The blobs should cover each element in the story so that we understand the core highlights across the various events of the article. The headline must capture the most important or newsworthy/recent development in the story. It should be clear, factual, and interesting. It should be specific and attention grabbing. Think tabloid, with the most juicy or dramatic and TIMELY SPECIFIC DETAILS detail in the headline. 
+INSTRUCTIONS FOR THE HEADLINE AND BLOBS: 
+
+HEADLINE PROCESS: First, brainstorm 3 different headline options that each take a different angle or focus on different newsworthy elements of the story. Consider various approaches - different quotes, different timelines, different key players, or different aspects of the story. Then, from these 3 options, select the single best headline that is most attention-grabbing, timely, and captures the most important development.
+
+CREATIVITY REQUIREMENTS: Each of your 3 brainstormed headlines must be genuinely different - not just minor word variations. Consider the EXAMPLES PROVIDED.
+- Lead with a striking quote vs. lead with an action/event
+- Focus on the human impact vs. focus on the institutional response  
+- Emphasize the immediate news vs. emphasize the broader implications
+- Start with a person's name vs. start with a location vs. start with a dramatic detail
+- Use different emotional tones (outrage, surprise, concern, etc.)
+- Highlight different stakeholders or perspectives in the story
+
+AVOID REPETITION: Do not default to the most obvious angle. Push yourself to find unexpected but truthful angles that other journalists might miss. The goal is to stand out with creative, magnetic headlines that still capture the core news accurately.
+
+
+The headline and blobs should encompass the most interesting and most timely elements or developments in the article. The headline and blobs should be short, engaging and magnetic. Blobs can include direct quotes when mentioning striking/notable things people have said but must be short and punchy. The blobs should cover each element in the story so that we understand the core highlights across the various events of the article. The headline must capture the most important or newsworthy/recent development in the story. It should be clear, factual, and interesting. It should be specific and attention grabbing. Think tabloid, with the most juicy or dramatic and TIMELY SPECIFIC DETAILS detail in the headline. 
 
 RESPONSE FORMAT: Return a JSON object with:
-- headline: The main headline as a string
+- headline: The single best headline as a string (after considering your 3 brainstormed options)
 - blobs: An array of blob strings
 
 The user will specify the number of blobs to write and may give editor instructions that say the content or focus of the blobs.
@@ -162,11 +177,13 @@ export async function POST(request: NextRequest) {
           blobs: [],
         },
         { status: 400 }
-      );
+      );  
     }
 
     // Resolve dynamic pieces for the user prompt
     const manualHeadlineBlock = body.headline ? `Manual Headline (you must use this headline):\n${body.headline}` : "";
+
+
 
     // Build prompts using the helper function
     const [systemPrompt, userPrompt] = buildPrompts(
@@ -195,8 +212,14 @@ export async function POST(request: NextRequest) {
       system: systemPrompt,
       prompt: userPrompt,
       schema: HeadlineAndBlobsSchema,
-      temperature: 0.3,
+      temperature: 1,
     });
+
+    console.log("passed directly", body.headline);
+    console.log("generated", object.headline);
+    console.log("which one is the winner", body.headline ? body.headline : object.headline);
+
+    // process.exit(0);
 
     // Build response - only AI data
     const response: Step03WriteHeadlineAndBlobsAIResponse = {

@@ -51,7 +51,7 @@ function buildInitialStateFromInputs(
   return {
     basic: {
       slug: inputs.slug,
-      headline: inputs.headline ?? "",
+      headline: ""
     },
     sourceUsage: {
       sourceText: inputs.inputSourceText,

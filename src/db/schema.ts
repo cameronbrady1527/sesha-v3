@@ -19,7 +19,7 @@ import { relations, sql } from "drizzle-orm";
 
 // Generic
 export const userRoleEnum = pgEnum("user_role", ["admin", "member"]);
-export const articleStatusEnum = pgEnum("article_status", ["10%", "25%", "50%", "75%", "90%", "failed", "published", "archived"]);
+export const articleStatusEnum = pgEnum("article_status", ["10%", "25%", "50%", "75%", "90%", "failed", "completed", "archived"]);
 
 // Re-used enumerations
 export const blobsEnum = pgEnum("blobs", ["1", "2", "3", "4", "5", "6"]);

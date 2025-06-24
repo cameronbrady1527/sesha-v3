@@ -39,6 +39,12 @@ interface LoadArticlesResult {
   error?: string;
 }
 
+interface CheckArticleStatusResult {
+  success: boolean;
+  article?: Article;
+  error?: string;
+}
+
 /* ==========================================================================*/
 // Actions
 /* ==========================================================================*/
@@ -184,6 +190,53 @@ export async function loadArticlesAction(
 }
 
 /**
+ * checkArticleStatusAction
+ *
+ * Server action to check the current status of an article by slug and version.
+ * Used for live polling of articles with running statuses.
+ *
+ * @param slug - The article slug
+ * @param version - The article version
+ * @returns Current article data or error
+ */
+export async function checkArticleStatusAction(
+  slug: string,
+  version: number
+): Promise<CheckArticleStatusResult> {
+  try {
+    // Authentication check
+    const user = await getAuthenticatedUserServer();
+    if (!user) {
+      redirect("/login");
+    }
+
+    // Import DAL function
+    const { getArticleByOrgSlugVersion } = await import("@/db/dal");
+    
+    // Get the current article status
+    const article = await getArticleByOrgSlugVersion(user.orgId, slug, version);
+    
+    if (!article) {
+      return {
+        success: false,
+        error: "Article not found"
+      };
+    }
+
+    return {
+      success: true,
+      article,
+    };
+  } catch (error) {
+    console.error("❌ checkArticleStatusAction failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to check article status"
+    };
+  }
+}
+
+/**
  * archiveArticleAction
  *
  * Server action to archive an article by setting its status to 'archived'.
@@ -225,7 +278,7 @@ export async function archiveArticleAction(articleId: string): Promise<{ success
 /**
  * unarchiveArticleAction
  *
- * Server action to unarchive an article by setting its status to 'published'.
+ * Server action to unarchive an article by setting its status to 'completed'.
  *
  * @param articleId - The article ID to unarchive
  * @returns Success/error result

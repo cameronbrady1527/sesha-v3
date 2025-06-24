@@ -284,6 +284,11 @@ async function step02SummarizeFacts(articleId: string, request: DigestRequest, l
  */
 async function step03WriteHeadlineAndBlobs(articleId: string, request: DigestRequest, step1Result: Step01ExtractFactQuotesResponse, step2Result: Step02SummarizeFactsResponse, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step03WriteHeadlineAndBlobsResponse> {
   console.log('🚀 Step 3: Write Headline and Blobs');
+
+  // console.log("the request in step 3 is", request);
+  // console.log("the step 1 result is", step1Result);
+  // console.log("the step 2 result is", step2Result);
+  // process.exit(0);
   
   try {
     // Prepare the request for the API
@@ -720,6 +725,7 @@ async function executeDigestPipeline(request: DigestRequest): Promise<PipelineRe
   
   // Also set as global logger for route handlers to use
   initializeGlobalLogger(`${request.metadata.userId}-${request.slug}`)
+
 
   try {
     // 1. Log initial request

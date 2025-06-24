@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
       system: systemPrompt,
       prompt: userPrompt,
       schema: ArticleSchema,
-      temperature: 0.3,
+      temperature: 0.8,
     });
 
     // Build response - only AI data

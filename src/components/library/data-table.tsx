@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 
 // External Packages --------------------------------------------------------
 import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, type ColumnFiltersState, type SortingState, type VisibilityState, useReactTable, ColumnDef } from "@tanstack/react-table";
-import { Search, Archive, ArchiveRestore, X, RefreshCw } from "lucide-react";
+import { Search, Archive, ArchiveRestore, X } from "lucide-react";
 
 // Local Modules ------------------------------------------------------------
 import { Button } from "@/components/ui/button";
@@ -38,8 +38,6 @@ interface ArticleDataTableProps {
   articles: ArticleMetadata[];
   /** Whether more articles are being loaded */
   isLoading?: boolean;
-  /** Callback to refresh article data */
-  onRefresh?: () => void;
 }
 
 /* ==========================================================================*/
@@ -54,9 +52,8 @@ interface ArticleDataTableProps {
  *
  * @param articles - Raw rows to display
  * @param isLoading - Whether more articles are being loaded
- * @param onRefresh - Callback to refresh article data
  */
-function ArticleDataTable({ articles, isLoading = false, onRefresh }: ArticleDataTableProps) {
+function ArticleDataTable({ articles, isLoading = false }: ArticleDataTableProps) {
   const router = useRouter();
 
   /* -------------------------------- State -------------------------------- */
@@ -67,7 +64,6 @@ function ArticleDataTable({ articles, isLoading = false, onRefresh }: ArticleDat
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [showArchived, setShowArchived] = React.useState(false);
   const [isArchiving, setIsArchiving] = React.useState(false);
-  const [isRefreshAnimating, setIsRefreshAnimating] = React.useState(false);
 
   /* ---------------------------- Table instance --------------------------- */
   const filteredArticles = React.useMemo(() => {
@@ -115,11 +111,6 @@ function ArticleDataTable({ articles, isLoading = false, onRefresh }: ArticleDat
       
       // Clear selection
       table.toggleAllRowsSelected(false);
-      
-      // Refresh data
-      if (onRefresh) {
-        onRefresh();
-      }
     } catch (error) {
       console.error('Failed to archive articles:', error);
     } finally {
@@ -138,11 +129,6 @@ function ArticleDataTable({ articles, isLoading = false, onRefresh }: ArticleDat
       
       // Clear selection
       table.toggleAllRowsSelected(false);
-      
-      // Refresh data
-      if (onRefresh) {
-        onRefresh();
-      }
     } catch (error) {
       console.error('Failed to unarchive articles:', error);
     } finally {
@@ -166,22 +152,6 @@ function ArticleDataTable({ articles, isLoading = false, onRefresh }: ArticleDat
     }
 
     router.push(`/article?slug=${encodeURIComponent(row.slug)}`);
-  };
-
-  // Handle refresh with animation
-  const handleRefreshClick = () => {
-    if (!onRefresh || isLoading) return;
-    
-    // Start animation
-    setIsRefreshAnimating(true);
-    
-    // Call the refresh function
-    onRefresh();
-    
-    // Stop animation after 1 second
-    setTimeout(() => {
-      setIsRefreshAnimating(false);
-    }, 500);
   };
 
   /* ----------------------------- Render ---------------------------------- */
@@ -213,17 +183,6 @@ function ArticleDataTable({ articles, isLoading = false, onRefresh }: ArticleDat
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
-          {/* Refresh button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefreshClick}
-            disabled={!onRefresh || isLoading}
-            className="flex items-center gap-1"
-          >
-            <RefreshCw className={`h-4 w-4 transition-transform duration-1000 ${isRefreshAnimating ? 'animate-spin' : ''}`} />
-          </Button>
-
           {/* Show/Hide Archived Toggle */}
           <Button
             variant={showArchived ? "default" : "outline"}

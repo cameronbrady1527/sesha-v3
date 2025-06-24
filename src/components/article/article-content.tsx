@@ -91,7 +91,7 @@ function ArticleContent() {
           headline: currentArticle.headline,
           blob: currentArticle.blob,
           content: currentArticle.content,
-          status: "published" as const
+          status: "completed" as const
         };
         
         console.log("📤 Calling createNewVersionAction with:", {

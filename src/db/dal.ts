@@ -478,7 +478,7 @@ export async function updateArticleWithResults(articleId: string, userId: string
   await db
     .update(articles)
     .set({
-      status: isSuccessful ? "published" : "failed",
+      status: isSuccessful ? "completed" : "failed",
       headline: isSuccessful ? headline : null,
       blob: isSuccessful ? blobs.join("\n") : null,
       content: isSuccessful ? formattedArticle : null,
@@ -586,7 +586,7 @@ export async function archiveArticle(articleId: string, userId: string): Promise
 }
 
 /**
- * Unarchive an article by setting its status to 'published'.
+ * Unarchive an article by setting its status to 'completed'.
  *
  * @param articleId - The article ID to unarchive
  * @param userId - User ID for audit trail
@@ -596,7 +596,7 @@ export async function unarchiveArticle(articleId: string, userId: string): Promi
   const [updatedArticle] = await db
     .update(articles)
     .set({
-      status: "published",
+      status: "completed",
       updatedBy: userId,
       updatedAt: new Date(),
     })
