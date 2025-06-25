@@ -133,7 +133,6 @@ IMPORTANT EDITOR NOTES:
 
 Additional editor instructions:
 Each blob MUST start with a different word.
-The headline and blob should be 100% factually accurate.
 Dial up the tabloid and voyeuristic nature of the writing, but use casual, easy to understand information.
 The blobs must be short, punchy, and written in a newsy style (not dry)
 Make sure to include the author or context of the source article in the first blob. (Eg, "... in a piece by X author in Y publication")
