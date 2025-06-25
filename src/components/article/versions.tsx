@@ -98,12 +98,8 @@ function Versions() {
   const router = useRouter();
   const { versionMetadata, currentVersion, setCurrentVersion, currentArticle } = useArticle();
   
-  // Navigate when version changes
-  React.useEffect(() => {
-    if (currentArticle) {
-      router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${currentVersion}`);
-    }
-  }, [currentVersion, currentArticle?.slug, router, currentArticle]);
+  // Note: Router navigation is handled by the version card click handlers, not in useEffect
+  // The previous useEffect with router.push was causing infinite loops
   
   return (
     <div className="h-full flex flex-col">
@@ -129,7 +125,13 @@ function Versions() {
               headline={versionData.headline}
               createdAt={versionData.createdAt}
               isActive={versionData.version === currentVersion}
-              onClick={() => setCurrentVersion(versionData.version)}
+              onClick={() => {
+                // Only navigate if we're switching to a different version
+                if (versionData.version !== currentVersion && currentArticle) {
+                  router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${versionData.version}`);
+                }
+                setCurrentVersion(versionData.version);
+              }}
             />
           ))}
         </div>

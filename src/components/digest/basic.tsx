@@ -11,92 +11,20 @@
 /* ==========================================================================*/
 
 // React core ---
-import React, { useState } from "react";
-// import { useRouter } from "next/navigation";
+import React from "react";
 
 // shadcn/ui components ---
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { toast } from "sonner";
 
 // External Packages -----
 import { Info, Loader2 } from "lucide-react";
 import { useDigest } from "./digest-context";
 
 // Local Files ---------------------------------------------------------------
-import { getAuthenticatedUserClient } from "@/lib/supabase/client";
-import { executeDigestPipeline } from "@/actions/pipeline";
-
-// Types ---------------------------------------------------------------------
-import type { DigestRequest } from "@/types/digest";
-import type { BlobsCount, LengthRange } from "@/db/schema";
-
-/* ==========================================================================*/
-// Helper Functions
-/* ==========================================================================*/
-
-/**
- * buildDigestRequest
- *
- * Build a DigestRequest from digest context data and user metadata.
- *
- * @param params - Object containing all digest form data
- * @returns Complete DigestRequest for pipeline processing
- */
-async function buildDigestRequest(params: {
-  slug: string;
-  headline: string;
-  sourceUsage: {
-    description: string;
-    accredit: string;
-    sourceText: string;
-    verbatim: boolean;
-    primary: boolean;
-  };
-  instructions: {
-    instructions: string;
-  };
-  preset: {
-    title: string;
-    blobs: string;
-    length: string;
-  };
-  metadata: {
-    currentVersion?: number;
-    orgId: number;
-  };
-}): Promise<DigestRequest> {
-  // Get authenticated user info
-  const authUser = await getAuthenticatedUserClient();
-
-  if (!authUser) {
-    throw new Error("User not authenticated");
-  }
-
-  return {
-    metadata: {
-      userId: authUser.userId,
-      orgId: params.metadata.orgId.toString(),
-      currentVersion: params.metadata.currentVersion || null,
-    },
-    slug: params.slug,
-    headline: params.headline,
-    source: {
-      description: params.sourceUsage.description,
-      accredit: params.sourceUsage.accredit,
-      sourceText: params.sourceUsage.sourceText,
-      verbatim: params.sourceUsage.verbatim,
-      primary: params.sourceUsage.primary,
-    },
-    instructions: {
-      instructions: params.instructions.instructions,
-      blobs: params.preset.blobs as BlobsCount,
-      length: params.preset.length as LengthRange,
-    },
-  };
-}
+import { useDigestSubmission } from "@/hooks/use-digest-submission";
 
 /* ==========================================================================*/
 // Main Component
@@ -105,15 +33,12 @@ async function buildDigestRequest(params: {
 function BasicDigestInputs() {
   // Import the Digest Context ----
   const { basic, setBasic, preset, sourceUsage, metadata, canDigest } = useDigest();
-  // const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Use the custom digest submission hook ----
+  const { handleSubmit, isLoading } = useDigestSubmission();
 
   const handleDigestClick = async () => {
-    if (isLoading) return;
-
-    setIsLoading(true);
-
-    // Build request data synchronously first
+    // Build request data
     const requestData = {
       slug: basic.slug,
       headline: basic.headline,
@@ -138,21 +63,8 @@ function BasicDigestInputs() {
       },
     };
 
-    // Navigate immediately - don't await anything after this
-    // router.push(`/library`);
-
-    const request = await buildDigestRequest(requestData);
-
-    console.log("🚀 Starting digest pipeline...");
-    const result = await executeDigestPipeline(request);
-
-    if (result.success) {
-      console.log("✅ Pipeline completed successfully:", result);
-      toast.success("Digest completed successfully");
-    } else {
-      console.error("❌ Pipeline failed:", result);
-      toast.error("Digest failed");
-    }
+    // Submit using the hook
+    await handleSubmit(requestData);
   };
 
   // Render the component ----

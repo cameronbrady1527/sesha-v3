@@ -16,7 +16,7 @@ import { generateText } from "ai";
 
 // Local Utilities ---
 import { buildPrompts } from "@/lib/utils";
-import { getGlobalLogger } from "@/lib/pipeline-logger";
+import { createPipelineLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
 import { Step02SummarizeFactsRequest, Step02SummarizeFactsAIResponse } from "@/types/digest";
@@ -28,7 +28,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 
 // const model = openai("gpt-4o");
 // const model = anthropic("claude-4-sonnet-20250514");
-const model = anthropic("claude-3-opus-20240229");
+const model = anthropic("claude-3-5-sonnet-20240620");
 
 /* ==========================================================================*/
 // Schema
@@ -68,7 +68,7 @@ In an exclusive, wide-ranging interview with The Telegraph's Camilla Tominey, Ni
 </example>
 
 <example>
-A new study published in Nature explores the evolution of menopause whales and suggests that the patterns may help explain the evolution of menopause in humans and other species. The study, by Sam Ellis et al found that menopause evolved independently at least four times in toothed whales. By analyzing data on lifespan, reproductive lifespan, and demography across 32 toothed whale species, the researchers determined that menopause evolved in whales as an extension of their overall lifespan without extending their reproductive window. This "live long" pathway mirrors how menopause is thought to have evolved in humans. The findings suggest that in species with menopause, older females are able to help care with their grandoffspring without competing with their daughters reproductively. This allows them to provide intergenerational help while minimizing intergenerational harm. The repeated evloution of menopause in whales proves a unique window into the potential evolutionary pathway of menopause in humans. 
+A new study published in Nature explores the evolution of menopause whales and suggests that the patterns may help explain the evolution of menopause in humans and other species. The study, by Sam Ellis et al found that menopause evolved independently at least four times in toothed whales. By analyzing data on lifespan, reproductive lifespan, and demography across 32 toothed whale species, the researchers determined that menopause evolved in whales as an extension of their overall lifespan without extending their reproductive window. This "live long" pathway mirrors how menopause is thought to have evolved in humans. The findings suggest that in species with menopause, older females are able to help care with their grandoffspring without competing with their daughters reproductively. This allows them to provide intergenerational help while minimizing intergenerational harm. The repeated evolution of menopause in whales proves a unique window into the potential evolutionary pathway of menopause in humans. 
 </example>
 `;
 
@@ -116,11 +116,9 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Log the formatted prompts if logger is available
-    const logger = getGlobalLogger();
-    if (logger) {
-      logger.logStepPrompts(2, "Summarize Facts", systemPrompt, userPrompt);
-    }
+    // Create a route-specific logger for this step
+    const logger = createPipelineLogger(`route-step02-${Date.now()}`);
+    logger.logStepPrompts(2, "Summarize Facts", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
     const { text: summary } = await generateText({
@@ -133,9 +131,10 @@ export async function POST(request: NextRequest) {
         },
         {
           role: "assistant",
-          content: "Here is a detailed and comprehensive 200-word summary of the key facts, events, and content in the provided source material. I have used newly-authored sentences to avoid plagiarism, but everything is based fully on the provided source-1-content. <summary>",
+          content: "Here is a detailed and comprehensive 200-word summary of the key facts, events, and content in the provided source material. I have used newly-authored sentences to avoid plagiarism, but everything is based fully on the provided source-1-content: <summary>",
         },
       ],
+      maxTokens: 3000,
       temperature: 0.3,
     });
 
@@ -143,6 +142,11 @@ export async function POST(request: NextRequest) {
     const response: Step02SummarizeFactsAIResponse = {
       summary: summary,
     };
+
+    logger.logStepResponse(2, "Summarize Facts", response);
+
+    // Close the logger to ensure logs are flushed
+    await logger.close();
 
     return NextResponse.json(response);
   } catch (error) {

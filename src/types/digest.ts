@@ -160,9 +160,14 @@ export interface Step04WriteArticleOutlineResponse extends BaseStepResponse {
 /** Request for step 5 - write article */
 export interface Step05WriteArticleRequest {
   length: LengthRange;
+
+  // Source Info
   sourceAccredit: string;
   sourceDescription: string;
   sourceText: string;
+  isPrimarySource: boolean;
+
+  // Editor Instructions
   instructions: string;
 
   // Accumulated context from previous steps

@@ -472,6 +472,7 @@ async function step05WriteArticle(articleId: string, request: DigestRequest, ste
       sourceAccredit: request.source.accredit,
       sourceDescription: request.source.description,
       sourceText: request.source.sourceText,
+      isPrimarySource: request.source.primary,
       instructions: request.instructions.instructions,
       // Accumulated context from previous steps
       headlineAndBlobsText: `Headline: ${step3Result.headline}\nBlobs: ${step3Result.blobs.join('\n')}`,

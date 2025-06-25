@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Local Utilities ---
 import { buildPrompts } from "@/lib/utils";
-import { getGlobalLogger } from "@/lib/pipeline-logger";
+import { createPipelineLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
 import { Step01ExtractFactQuotesRequest, Step01ExtractFactQuotesAIResponse } from "@/types/digest";
@@ -27,7 +27,7 @@ import { generateText } from "ai";
 
 // const model = openai('gpt-4o-mini')
 // const model = anthropic("claude-4-sonnet-20250514");
-const model = anthropic("claude-3-opus-20240229");
+const model = anthropic("claude-3-5-sonnet-20240620");
 
 /* ==========================================================================*/
 // Prompts
@@ -49,10 +49,10 @@ Examples:
 <quote-list>
 "Jeffrey said, 'Great, we'll call up Trump and we'll go to'—I don't recall the name of the casino, but—'we'll go to the casino,'" - Johanna Sjoberg's testimony/deposition in a civil lawsuit against Ghislaine Maxwell.
 "While there was no significant change in price last year, the results indicate an increase in of over 400% over the last quarter," - text from the study describing the price increase in Oranges.
-"The current levels of population change across Europe are already the most dramatic since the collapse of the Roman Empire in the West. Doubling or tripling them is surely unsustainable. In the end, voters simply won’t support it, and if current politicians won’t stop it, as they should, then they will vote for ones who will. " Lord Frost in the op-ed.
+"The current levels of population change across Europe are already the most dramatic since the collapse of the Roman Empire in the West. Doubling or tripling them is surely unsustainable. In the end, voters simply won't support it, and if current politicians won't stop it, as they should, then they will vote for ones who will. " Lord Frost in the op-ed.
 "I would absolutely consider that," Nume's response when asked about the potential of returning to the ring.
 ...
-"It does look like a terrorist attack. The type of thing we’ve seen ISIS do in the past. And as far as we’re aware, that’s … our going assumption at the moment." - A senior U.S. official on Wednesday's bombing in Iran.
+"It does look like a terrorist attack. The type of thing we've seen ISIS do in the past. And as far as we're aware, that's … our going assumption at the moment." - A senior U.S. official on Wednesday's bombing in Iran.
 </quote-list>
 `;
 
@@ -94,11 +94,9 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Log the formatted prompts if logger is available
-    const logger = getGlobalLogger();
-    if (logger) {
-      logger.logStepPrompts(1, "Extract Fact Quotes", systemPrompt, userPrompt);
-    }
+    // Create a route-specific logger for this step
+    const logger = createPipelineLogger(`route-step01-${Date.now()}`);
+    logger.logStepPrompts(1, "Extract Fact Quotes", systemPrompt, userPrompt);
 
     // Generate structured object using AI SDK
     const { text: quotes } = await generateText({
@@ -115,12 +113,18 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: 0.3,
+      maxTokens: 2500,
     });
 
     // Build response - only AI data
     const response: Step01ExtractFactQuotesAIResponse = {
       quotes,
     };
+
+    logger.logStepResponse(1, "Extract Fact Quotes", response);
+
+    // Close the logger to ensure logs are flushed
+    await logger.close();
 
     return NextResponse.json(response);
   } catch (error) {
