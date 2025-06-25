@@ -32,10 +32,10 @@ const model = anthropic("claude-3-opus-20240229");
 
 // Word target mapping
 const WORD_TARGET_MAP: Record<LengthRange, number> = {
-  "100-250": 250,
-  "400-550": 600,
-  "700-850": 900,
-  "1000-1200": 1300,
+  "100-250": 100,
+  "400-550": 400,
+  "700-850": 1000,
+  "1000-1200": 1500,
 };
 
 
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
 
 // Helper function to get example articles based on word target
 function getExampleArticles(wordTarget: number): string {
-  if (wordTarget === 250) {
+  if (wordTarget === 100) {
     return `
 Example 1 (this is just an example article):
 <example-article>
@@ -257,7 +257,7 @@ The restrictions come after Trump's statements led to increased security concern
 Trump's legal team pointed to his general restraint in commenting on individuals in this specific case, contrasting it with the volume of posts targeting people in other proceedings. (Source 1)
 </example-article>
 `;
-  } else if (wordTarget === 600) {
+  } else if (wordTarget === 400) {
     return `
 Example 1 (this is just an example article):
 <example-article>
@@ -366,7 +366,7 @@ The allegations and evidence of illegal activity at Rise and Shine supermarket u
 There is a right to appeal the decision within 21 days of receiving written notice. (Source 1)
 </example-article>
 `;
-  } else if (wordTarget === 900) {
+  } else if (wordTarget === 1000) {
     return `
 Example 1 (this is just an example article):
 <example-article>

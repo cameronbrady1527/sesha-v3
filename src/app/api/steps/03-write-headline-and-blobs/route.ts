@@ -124,6 +124,7 @@ Blob: [insert blob]
 Blob: [insert blob]
 `;
 
+
 const USER_PROMPT = `
 Number of Blobs: {{num_blobs}}
 {{manual_headline_block}}
