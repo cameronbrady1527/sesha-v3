@@ -132,8 +132,9 @@ IMPORTANT EDITOR NOTES:
 {{editor_notes}}
 
 Additional editor instructions:
-Each blob MUST start with a different word. 
-Dial up the tabloid and voyeuristic nature of the writing, but use casual, easy to understand information.
+Each blob MUST start with a different word.
+The headline and blob should be 100% factually accurate.
+Dial up the tabloid and voyeuristic nature of the writing, but use casual, easy to understand information. Be transatlantic in your language.
 The blobs must be short, punchy, and written in a newsy style (not dry)
 Make sure to include the author or context of the source article in the first blob. (Eg, "... in a piece by X author in Y publication")
 Even if the input is hard science, a dry court ruling, or another dense text, the headline and blobs MUST be written in pithy, easy‑to‑understand english. For example, instead of "In a groundbreaking judgement addressing the multifaceted elements of electric vehicles, a Michigan court declared that..." just write "A Michigan court ruled X" 
