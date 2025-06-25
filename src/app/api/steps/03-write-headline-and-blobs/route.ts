@@ -28,7 +28,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 // Configuration
 /* ==========================================================================*/
 
-const structuredModel = openai("gpt-4o-mini");
+const structuredModel = openai("gpt-4o");
 const model = anthropic("claude-3-5-sonnet-20240620");
 // const model = openai("gpt-4.1");
 
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
           content: `Here is the attention-grabbing headline and the ${body.blobs} requested blobs based on the input and editor instructions. These magnetic blobs are only 10-20 words long and are written in zippy plain-english.`
         }
       ],
-      temperature: 0.35,
+      temperature: 0.4,
       maxTokens: 500,
     });
 
