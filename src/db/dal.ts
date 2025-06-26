@@ -41,6 +41,7 @@ export interface ArticleVersionMetadata {
   slug: string | null;
   headline: string | null;
   createdAt: Date;
+  blobOutline: string | null;
 }
 
 /** Raw run row shape returned by `getOrgRuns()` */
@@ -199,6 +200,7 @@ export async function getArticleVersionsMetadata(articleId: string): Promise<Art
       slug: articles.slug,
       headline: articles.headline,
       createdAt: articles.createdAt,
+      blobOutline: articles.blob,
     })
     .from(articles)
     .where(eq(articles.id, articleId))

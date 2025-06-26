@@ -16,7 +16,36 @@ import { ArrowUpDown } from "lucide-react";
 // Local Modules ------------------------------------------------------------
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ArticleMetadata } from "@/db/dal";
+
+/* ==========================================================================*/
+// Helper Components
+/* ==========================================================================*/
+
+interface CellTooltipProps {
+  content: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+/** Reusable tooltip for table cells with consistent styling */
+function CellTooltip({ content, children, className = "" }: CellTooltipProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent 
+        side="top" 
+        sideOffset={0}
+        className={`text-xs bg-card text-foreground border border-border shadow-md ${className}`}
+      >
+        <p className="whitespace-normal break-words">{content}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 /* ==========================================================================*/
 // Column Definitions
@@ -28,21 +57,25 @@ const columns: ColumnDef<ArticleMetadata>[] = [
   {
     id: "select",
     header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(val) => table.toggleAllPageRowsSelected(!!val)}
-        aria-label="Select all"
-      />
+      <div className="flex justify-center">
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(val) => table.toggleAllPageRowsSelected(!!val)}
+          aria-label="Select all"
+        />
+      </div>
     ),
     cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(val) => row.toggleSelected(!!val)}
-        aria-label="Select row"
-      />
+      <div className="flex justify-center">
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(val) => row.toggleSelected(!!val)}
+          aria-label="Select row"
+        />
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
@@ -53,18 +86,20 @@ const columns: ColumnDef<ArticleMetadata>[] = [
   {
     accessorKey: "createdAt",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium"
-      >
-        Timestamp <ArrowUpDown className="ml-1 h-4 w-4" />
-      </Button>
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-medium"
+        >
+          Timestamp <ArrowUpDown className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
     ),
     cell: ({ row }) => {
       const date = new Date(row.getValue<Date>("createdAt"));
       return (
-        <div className="text-sm">
+        <div className="text-sm text-center">
           <div>{date.toLocaleDateString()}</div>
           <div className="text-muted-foreground">{date.toLocaleTimeString()}</div>
         </div>
@@ -77,19 +112,28 @@ const columns: ColumnDef<ArticleMetadata>[] = [
   {
     accessorKey: "slug",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium"
-      >
-        Slug <ArrowUpDown className="ml-1 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => (
-      <div className="truncate max-w-[200px] font-medium">
-        {row.getValue<string>("slug")}
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-medium"
+        >
+          Slug <ArrowUpDown className="ml-1 h-4 w-4" />
+        </Button>
       </div>
     ),
+    cell: ({ row }) => {
+      const slug = row.getValue<string>("slug");
+      return (
+        <div className="flex justify-center">
+          <CellTooltip content={slug}>
+            <div className="truncate max-w-[200px] font-medium">
+              {slug}
+            </div>
+          </CellTooltip>
+        </div>
+      );
+    },
     size: 220,
   },
 
@@ -97,15 +141,21 @@ const columns: ColumnDef<ArticleMetadata>[] = [
   {
     accessorKey: "version",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium"
-      >
-        Ver <ArrowUpDown className="ml-1 h-4 w-4" />
-      </Button>
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-medium"
+        >
+          Ver <ArrowUpDown className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
     ),
-    cell: ({ row }) => <span>{row.getValue<number>("version")}</span>,
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span>{row.getValue<number>("version")}</span>
+      </div>
+    ),
     size: 60,
   },
 
@@ -113,19 +163,28 @@ const columns: ColumnDef<ArticleMetadata>[] = [
   {
     accessorKey: "createdByName",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium"
-      >
-        Creator <ArrowUpDown className="ml-1 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => (
-      <div className="truncate max-w-[140px]">
-        {row.getValue<string>("createdByName") ?? "—"}
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-medium"
+        >
+          Creator <ArrowUpDown className="ml-1 h-4 w-4" />
+        </Button>
       </div>
     ),
+    cell: ({ row }) => {
+      const createdByName = row.getValue<string>("createdByName") ?? "—";
+      return (
+        <div className="flex justify-center">
+          <CellTooltip content={createdByName}>
+            <div className="truncate max-w-[140px]">
+              {createdByName}
+            </div>
+          </CellTooltip>
+        </div>
+      );
+    },
     size: 150,
   },
 
@@ -133,19 +192,28 @@ const columns: ColumnDef<ArticleMetadata>[] = [
   {
     accessorKey: "headline",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium"
-      >
-        Headline <ArrowUpDown className="ml-1 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => (
-      <div className="truncate max-w-[400px]">
-        {row.getValue<string | null>("headline") ?? "—"}
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-medium"
+        >
+          Headline <ArrowUpDown className="ml-1 h-4 w-4" />
+        </Button>
       </div>
     ),
+    cell: ({ row }) => {
+      const headline = row.getValue<string | null>("headline") ?? "—";
+      return (
+        <div className="flex justify-center">
+          <CellTooltip content={headline}>
+            <div className="truncate max-w-[400px]">
+              {headline}
+            </div>
+          </CellTooltip>
+        </div>
+      );
+    },
     size: 450,
   },
 
@@ -153,16 +221,20 @@ const columns: ColumnDef<ArticleMetadata>[] = [
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium capitalize"
-      >
-        Status <ArrowUpDown className="ml-1 h-4 w-4" />
-      </Button>
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-medium capitalize"
+        >
+          Status <ArrowUpDown className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
     ),
     cell: ({ row }) => (
-      <span className="capitalize">{row.getValue<string>("status")}</span>
+      <div className="text-center">
+        <span className="capitalize">{row.getValue<string>("status")}</span>
+      </div>
     ),
     size: 100,
   },

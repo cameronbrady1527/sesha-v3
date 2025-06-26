@@ -104,6 +104,7 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
     slug: article.slug,
     headline: article.headline,
     createdAt: article.createdAt,
+    blobOutline: article.blob,
   }));
   
   // Update current article with changes
