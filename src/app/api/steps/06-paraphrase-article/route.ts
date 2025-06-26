@@ -93,7 +93,7 @@ Example rewrite:
 Nume has previously argued that the polls don't support a Carlson win in the 2024 election. (Source 1) 
 But in an interview last month, he claimed Carlson is "a lock in." (Source 1) 
 
-3. Remove the very last paragraph or sentence if it is "waflle" and pure opinion or summary. For example:
+3. CRUCIAL: Remove the very last paragraph or sentence if it is "waflle", pure opinion or summary. For example:
 
 Example input: 
 { imagine a whole article here and then...}...
@@ -152,7 +152,7 @@ Example rewrite:
 Nume has previously argued that the polls don't support a Carlson win in the 2024 election. (Source 1) 
 But in an interview last month, he claimed Carlson is "a lock in." (Source 1) 
 
-3. Remove the very last paragraph or sentence if it is "waflle" and pure opinion or summary. For example:
+3. IMPORTANT: Remove the very last paragraph or sentence if it is "waflle" and pure opinion or summary. For example:
 
 Example input: 
 { imagine a whole article here and then...}...
