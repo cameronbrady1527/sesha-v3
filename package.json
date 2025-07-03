@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev:main": "cp .env.main .env.local && next dev",
+    "build:main": "cp .env.main .env.local && next build",
+    "start:main": "cp .env.main .env.local && next start",
+    "dev:experiment": "cp .env.experiment .env.local && next dev",
+    "build:experiment": "cp .env.experiment .env.local && next build",
+    "start:experiment": "cp .env.experiment .env.local && next start",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "test:pipeline": "node scripts/test-pipeline.js"
+    "start": "next start"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
