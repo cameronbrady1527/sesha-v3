@@ -217,6 +217,31 @@ const columns: ColumnDef<ArticleMetadata>[] = [
     size: 450,
   },
 
+  /* ----------------------------- Source Type ---------------------------- */
+  {
+    accessorKey: "sourceType",
+    header: ({ column }) => (
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-medium"
+        >
+          Source Type <ArrowUpDown className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
+    ),
+    cell: ({ row }) => {
+      const sourceType = row.getValue<string>("sourceType") ?? "single";
+      return (
+        <div className="text-center">
+          <span className="capitalize">{sourceType}</span>
+        </div>
+      );
+    },
+    size: 120,
+  },
+
   /* -------------------------------- Status ------------------------------ */
   {
     accessorKey: "status",

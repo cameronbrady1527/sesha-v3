@@ -54,11 +54,11 @@ function buildInitialStateFromInputs(
       headline: ""
     },
     sourceUsage: {
-      sourceText: inputs.inputSourceText,
-      description: inputs.inputSourceDescription,
-      accredit: inputs.inputSourceAccredit,
-      verbatim: inputs.inputSourceVerbatim ,
-      primary: inputs.inputSourcePrimary,
+      sourceText: inputs.inputSourceText1,
+      description: inputs.inputSourceDescription1,
+      accredit: inputs.inputSourceAccredit1,
+      verbatim: inputs.inputSourceVerbatim1,
+      primary: inputs.inputSourcePrimary1,
     },
     preset: {
       title: inputs.inputPresetTitle ?? "",

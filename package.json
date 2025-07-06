@@ -9,9 +9,15 @@
     "dev:experiment": "cp .env.experiment .env.local && next dev",
     "build:experiment": "cp .env.experiment .env.local && next build",
     "start:experiment": "cp .env.experiment .env.local && next start",
+    "migrate:main": "cp .env.main .env.local && npx drizzle-kit migrate",
+    "migrate:experiment": "cp .env.experiment .env.local && npx drizzle-kit migrate",
+    "generate:main": "cp .env.main .env.local && npx drizzle-kit generate",
+    "generate:experiment": "cp .env.experiment .env.local && npx drizzle-kit generate",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "migrate": "npx drizzle-kit migrate",
+    "generate": "npx drizzle-kit generate"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",

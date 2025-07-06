@@ -105,6 +105,43 @@ pnpm start
 | `pnpm start:main` | Start production server with main environment |
 | `pnpm start:experiment` | Start production server with experiment environment |
 | `pnpm start` | Start production server with default configuration |
+| `pnpm migrate:main` | Run database migrations with main environment |
+| `pnpm migrate:experiment` | Run database migrations with experiment environment |
+| `pnpm migrate` | Run database migrations with default configuration |
+| `pnpm generate:main` | Generate database schema with main environment |
+| `pnpm generate:experiment` | Generate database schema with experiment environment |
+| `pnpm generate` | Generate database schema with default configuration |
+
+## Database Management
+
+This project uses Drizzle ORM for database management. The database commands are environment-aware:
+
+### Main Environment
+```bash
+# Generate database schema
+pnpm generate:main
+
+# Run migrations
+pnpm migrate:main
+```
+
+### Experiment Environment
+```bash
+# Generate database schema
+pnpm generate:experiment
+
+# Run migrations
+pnpm migrate:experiment
+```
+
+### Default Environment
+```bash
+# Generate database schema
+pnpm generate
+
+# Run migrations
+pnpm migrate
+```
 
 ## How It Works
 

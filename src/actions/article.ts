@@ -90,11 +90,11 @@ export async function createNewVersionAction(
       slug: currentArticle.slug,
       headline: updates.headline || currentArticle.headline || '',
       source: {
-        description: currentArticle.inputSourceDescription || '',
-        accredit: currentArticle.inputSourceAccredit || '',
-        sourceText: currentArticle.inputSourceText || '',
-        verbatim: currentArticle.inputSourceVerbatim || false,
-        primary: currentArticle.inputSourcePrimary || false,
+        description: currentArticle.inputSourceDescription1 || '',
+        accredit: currentArticle.inputSourceAccredit1 || '',
+        sourceText: currentArticle.inputSourceText1 || '',
+        verbatim: currentArticle.inputSourceVerbatim1 || false,
+        primary: currentArticle.inputSourcePrimary1 || false,
       },
       instructions: {
         instructions: currentArticle.inputPresetInstructions || '',

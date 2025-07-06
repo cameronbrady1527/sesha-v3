@@ -32,7 +32,9 @@ export interface ArticleMetadata {
   createdByName: string;
   slug: string;
   headline: string | null;
+  sourceType: string;
   status: ArticleStatus;
+
 }
 
 /** Sidebar list item for an article version. */
@@ -131,6 +133,7 @@ export async function getArticleMetadata(articleId: string): Promise<ArticleMeta
       `.as("createdByName"),
       slug: articles.slug,
       headline: articles.headline,
+      sourceType: articles.sourceType,
       status: articles.status,
     })
     .from(articles)
@@ -165,6 +168,7 @@ export async function getOrgArticlesMetadataPaginated(orgId: number, limit = 50,
       `.as("createdByName"),
       slug: articles.slug,
       headline: articles.headline,
+      sourceType: articles.sourceType,
       status: articles.status,
     })
     .from(articles)
@@ -243,13 +247,51 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       headline: articles.headline,
       blob: articles.blob,
       content: articles.content,
-      // sentences: articles.sentences,
+      sourceType: articles.sourceType,
       changeDescription: articles.changeDescription,
-      inputSourceText: articles.inputSourceText,
-      inputSourceDescription: articles.inputSourceDescription,
-      inputSourceAccredit: articles.inputSourceAccredit,
-      inputSourceVerbatim: articles.inputSourceVerbatim,
-      inputSourcePrimary: articles.inputSourcePrimary,
+
+      // 1st source
+      inputSourceText1: articles.inputSourceText1 ,
+      inputSourceDescription1: articles.inputSourceDescription1,
+      inputSourceAccredit1: articles.inputSourceAccredit1,
+      inputSourceVerbatim1: articles.inputSourceVerbatim1,
+      inputSourcePrimary1: articles.inputSourcePrimary1,
+
+      // 2nd source
+        inputSourceText2: articles.inputSourceText2,
+      inputSourceDescription2: articles.inputSourceDescription2,
+      inputSourceAccredit2: articles.inputSourceAccredit2,
+      inputSourceVerbatim2: articles.inputSourceVerbatim2,
+      inputSourcePrimary2: articles.inputSourcePrimary2,
+
+      // 3rd source
+      inputSourceText3: articles.inputSourceText3,
+      inputSourceDescription3: articles.inputSourceDescription3,
+      inputSourceAccredit3: articles.inputSourceAccredit3,
+      inputSourceVerbatim3: articles.inputSourceVerbatim3,
+      inputSourcePrimary3: articles.inputSourcePrimary3,
+
+      // 4th source
+      inputSourceText4: articles.inputSourceText4,
+      inputSourceDescription4: articles.inputSourceDescription4,
+      inputSourceAccredit4: articles.inputSourceAccredit4,
+      inputSourceVerbatim4: articles.inputSourceVerbatim4,
+      inputSourcePrimary4: articles.inputSourcePrimary4,
+
+      // 5th source
+      inputSourceText5: articles.inputSourceText5,
+      inputSourceDescription5: articles.inputSourceDescription5,
+      inputSourceAccredit5: articles.inputSourceAccredit5,
+      inputSourceVerbatim5: articles.inputSourceVerbatim5,
+      inputSourcePrimary5: articles.inputSourcePrimary5,
+
+      // 6th source
+      inputSourceText6: articles.inputSourceText6,
+      inputSourceDescription6: articles.inputSourceDescription6,
+      inputSourceAccredit6: articles.inputSourceAccredit6,
+      inputSourceVerbatim6: articles.inputSourceVerbatim6,
+      inputSourcePrimary6: articles.inputSourcePrimary6,
+    
       inputPresetTitle: articles.inputPresetTitle,
       inputPresetInstructions: articles.inputPresetInstructions,
       inputPresetBlobs: articles.inputPresetBlobs,
@@ -401,6 +443,7 @@ export async function createArticleRecord(payload: {
     userId: string;
     orgId: string;
     currentVersion: number | null;
+    sourceType?: string;
   };
   slug: string;
   headline: string;
@@ -418,6 +461,8 @@ export async function createArticleRecord(payload: {
   };
 }): Promise<Article> {
   const orgId = parseInt(payload.metadata.orgId);
+
+  const sourceType = payload.metadata.sourceType as "single" | "multi" || "single";
 
   return await db.transaction(async (tx) => {
     // Lock and get the current highest version for this slug
@@ -440,13 +485,22 @@ export async function createArticleRecord(payload: {
         version: nextVersion,
         headline: payload.headline,
         status: "10%",
+        sourceType: sourceType,
 
         // Input snapshot fields
-        inputSourceText: payload.source.sourceText,
-        inputSourceDescription: payload.source.description,
-        inputSourceAccredit: payload.source.accredit,
-        inputSourceVerbatim: payload.source.verbatim,
-        inputSourcePrimary: payload.source.primary,
+        inputSourceText1: payload.source.sourceText,
+        inputSourceDescription1: payload.source.description,
+        inputSourceAccredit1: payload.source.accredit,
+        inputSourceVerbatim1: payload.source.verbatim,
+        inputSourcePrimary1: payload.source.primary,
+
+        // 2nd source
+        inputSourceText2: payload.source.sourceText,
+        inputSourceDescription2: payload.source.description,
+        inputSourceAccredit2: payload.source.accredit,
+        inputSourceVerbatim2: payload.source.verbatim,
+        inputSourcePrimary2: payload.source.primary,
+        
         inputPresetInstructions: payload.instructions.instructions,
         inputPresetBlobs: payload.instructions.blobs,
         inputPresetLength: payload.instructions.length,
