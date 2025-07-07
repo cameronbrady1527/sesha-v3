@@ -101,6 +101,7 @@ function validatePipelineSuccess(step1Result: Step01ExtractFactQuotesResponse, s
  */
 async function step01ExtractFactQuotes(articleId: string, request: DigestRequest, logger: ReturnType<typeof createPipelineLogger> | null): Promise<Step01ExtractFactQuotesResponse> {
   console.log("🚀 Step 1: Extract Fact Quotes");
+  console.log("redeploying");
 
   try {
     // Prepare the request for the API
@@ -116,7 +117,7 @@ async function step01ExtractFactQuotes(articleId: string, request: DigestRequest
     }
 
     // Call the API endpoint
-    const response = await fetch(`/api/steps/01-extract-fact-quotes`, {
+    const response = await fetch(`${baseUrl}/api/steps/01-extract-fact-quotes`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
