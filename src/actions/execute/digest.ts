@@ -58,6 +58,31 @@ if (!baseUrl) {
 }
 
 /**
+ * handleStepFailure
+ *
+ * Helper function to handle step failures consistently.
+ * Updates article status to "failed", logs the error, closes logger, and returns failure response.
+ *
+ * @param stepNumber - The step number that failed
+ * @param articleId - Article ID to update
+ * @param userId - User ID for status update
+ * @param logger - Pipeline logger instance
+ * @returns Failed pipeline response
+ */
+async function handleStepFailure(
+  stepNumber: number, 
+  articleId: string, 
+  userId: string, 
+  logger: ReturnType<typeof createPipelineLogger>
+): Promise<PipelineResponse> {
+  console.error(`❌ Step ${stepNumber} failed, stopping pipeline for article: ${articleId}`);
+  await updateArticleStatus(articleId, userId, "failed");
+  logger.logError(`STEP_${stepNumber}_FAILED`, `Step ${stepNumber} failed, pipeline stopped`);
+  await closeGlobalLogger();
+  return { success: false };
+}
+
+/**
  * validatePipelineSuccess
  *
  * Validate if the pipeline was truly successful based on all step results.
@@ -674,6 +699,7 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
  *
  * Execute all 7 pipeline steps for an existing article.
  * Article must already exist in the database.
+ * Exits early if any step fails.
  *
  * @param articleId - The existing article ID to process
  * @param request - The original digest request
@@ -692,32 +718,66 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
     // Log initial request
     logger.logInitialRequest(request);
 
-    // Run all 7 steps with proper context passing and logging
+    // Step 1: Extract Fact Quotes
     const step1Result = await step01ExtractFactQuotes(articleId, request, logger);
+    
+    if (!step1Result.success) {
+      return await handleStepFailure(1, articleId, request.metadata.userId, logger);
+    }
 
     // Update status to 10% after step 1
     await updateArticleStatus(articleId, request.metadata.userId, "10%");
 
+    // Step 2: Summarize Facts
     const step2Result = await step02SummarizeFacts(articleId, request, logger);
+    
+    if (!step2Result.success) {
+      return await handleStepFailure(2, articleId, request.metadata.userId, logger);
+    }
 
+    // Step 3: Write Headline and Blobs
     const step3Result = await step03WriteHeadlineAndBlobs(articleId, request, step1Result, step2Result, logger);
+    
+    if (!step3Result.success) {
+      return await handleStepFailure(3, articleId, request.metadata.userId, logger);
+    }
 
     // Update status to 25% after step 3
     await updateArticleStatus(articleId, request.metadata.userId, "25%");
 
+    // Step 4: Write Article Outline
     const step4Result = await step04WriteArticleOutline(articleId, request, step1Result, step2Result, step3Result, logger);
+    
+    if (!step4Result.success) {
+      return await handleStepFailure(4, articleId, request.metadata.userId, logger);
+    }
 
+    // Step 5: Write Article
     const step5Result = await step05WriteArticle(articleId, request, step2Result, step3Result, step4Result, logger);
+    
+    if (!step5Result.success) {
+      return await handleStepFailure(5, articleId, request.metadata.userId, logger);
+    }
 
     // Update status to 50% after step 5
     await updateArticleStatus(articleId, request.metadata.userId, "50%");
 
+    // Step 6: Paraphrase Article
     const step6Result = await step06ParaphraseArticle(articleId, request, step5Result, logger);
+    
+    if (!step6Result.success) {
+      return await handleStepFailure(6, articleId, request.metadata.userId, logger);
+    }
 
-    // Update status to 90% after step 6
+    // Update status to 75% after step 6
     await updateArticleStatus(articleId, request.metadata.userId, "75%");
 
+    // Step 7: Sentence Per Line Attribution
     const step7Result = await step07SentencePerLineAttribution(articleId, request, step6Result, logger);
+    
+    if (!step7Result.success) {
+      return await handleStepFailure(7, articleId, request.metadata.userId, logger);
+    }
 
     await updateArticleStatus(articleId, request.metadata.userId, "90%");
 
@@ -752,6 +812,13 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
 
     // Log the error
     logger.logError("PIPELINE_ERROR", error);
+
+    // Update article status to failed
+    try {
+      await updateArticleStatus(articleId, request.metadata.userId, "failed");
+    } catch (statusError) {
+      console.error("Failed to update article status to failed:", statusError);
+    }
 
     // Close logger even on failure
     try {
