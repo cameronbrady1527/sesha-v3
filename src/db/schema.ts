@@ -19,7 +19,7 @@ import { relations, sql } from "drizzle-orm";
 
 // Generic
 export const userRoleEnum = pgEnum("user_role", ["admin", "member"]);
-export const articleStatusEnum = pgEnum("article_status", ["10%", "25%", "50%", "75%", "90%", "failed", "completed", "archived"]);
+export const articleStatusEnum = pgEnum("article_status", ["pending", "started", "10%", "25%", "50%", "75%", "90%", "failed", "completed", "archived"]);
 
 // Re-used enumerations
 export const blobsEnum = pgEnum("blobs", ["1", "2", "3", "4", "5", "6"]);
@@ -40,7 +40,7 @@ export const organizations = pgTable(
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 255 }).notNull().unique(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),  
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [index("organizations_name_idx").on(table.name)]
 );
@@ -104,8 +104,6 @@ export const articles = pgTable(
     headline: varchar("headline", { length: 500 }),
     blob: text("blob"),
     content: text("content"),
-    // sentences: json("sentences").$type<string[]>(),
-    changeDescription: text("change_description"),
 
     // ─────────────── Input snapshot ────────
 
@@ -147,7 +145,7 @@ export const articles = pgTable(
     inputSourcePrimary6: boolean("input_source_primary_6").default(false),
 
     // Input (Non-source)
-    inputPresetTitle: varchar("input_preset_title", { length: 255 }),
+    inputPresetTitle: varchar("input_preset_title", { length: 255 }).default(""),
     inputPresetInstructions: text("input_preset_instructions").default("").notNull(),
     inputPresetBlobs: blobsEnum("input_preset_blobs").default("1").notNull(),
     inputPresetLength: lengthEnum("input_preset_length").default("700-850").notNull(),
@@ -261,3 +259,4 @@ export type ArticleStatus = (typeof articleStatusEnum.enumValues)[number];
 export type BlobsCount = (typeof blobsEnum.enumValues)[number];
 export type LengthRange = (typeof lengthEnum.enumValues)[number];
 export type RunType = (typeof runTypeEnum.enumValues)[number];
+export type SourceType = (typeof sourceTypeEnum.enumValues)[number];

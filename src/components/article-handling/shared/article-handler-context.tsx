@@ -1,10 +1,10 @@
 "use client";
 
 /* ==========================================================================*/
-// aggregator-context.tsx — React context for Aggregator creation flows
+// article-handler-context.tsx — Unified React context for article creation flows
 /* ==========================================================================*/
-// Purpose: Centralised store + helpers (useAggregator) for coordinating multi‑
-//          step aggregator builder UI (basic info, preset form, sources workflow).
+// Purpose: Centralised store + helpers for coordinating article creation UI
+//          supporting both single-source (digest) and multi-source (aggregate) modes
 // Sections: Imports ▸ Types ▸ Defaults ▸ Reducer ▸ Context ▸ Provider ▸ Hook ▸ Exports
 /* ==========================================================================*/
 
@@ -29,9 +29,10 @@ interface PresetForm {
 interface SourceUsageOptions {
   description: string;
   accredit: string;
-  sourceText: string; // actual text used for aggregation
+  sourceText: string; // actual text used for processing
   verbatim: boolean;
   primary: boolean;
+  base: boolean; // Only applies to multi mode
 }
 
 interface SourceInput {
@@ -45,52 +46,55 @@ interface BasicForm {
   headline: string;
 }
 
-interface AggregatorMetadata {
+interface ArticleMetadata {
   currentVersion?: number; // Present if editing existing article
   orgId: number; // Organization ID
 }
 
-interface AggregatorState {
+interface ArticleHandlerState {
   basic: BasicForm;
   preset: PresetForm;
-  sources: SourceInput[]; // Up to 6 sources
-  metadata: AggregatorMetadata;
+  sources: SourceInput[]; // Always array, single source = [oneSource]
+  metadata: ArticleMetadata;
+  mode: 'single' | 'multi'; // Determines behavior
 }
 
 /* ------------------------- Reducer Action shape ------------------------- */
 
-type AggregatorAction = 
+type ArticleHandlerAction = 
   | { type: "SET_BASIC"; field: keyof BasicForm; value: string } 
   | { type: "SET_PRESET"; field: keyof PresetForm; value: string | BlobsCount | LengthRange } 
-  | { type: "SET_SOURCE_INPUT"; sourceIndex: number; value: string } 
+  | { type: "SET_SOURCE_URL"; sourceIndex: number; value: string } 
   | { type: "SET_SOURCE_USAGE"; sourceIndex: number; field: keyof SourceUsageOptions; value: string | boolean }
   | { type: "ADD_SOURCE" }
   | { type: "REMOVE_SOURCE"; sourceIndex: number }
-  | { type: "SET_METADATA"; field: keyof AggregatorMetadata; value: string | number | boolean }
+  | { type: "SET_METADATA"; field: keyof ArticleMetadata; value: string | number | boolean }
+  | { type: "SET_MODE"; mode: 'single' | 'multi' }
   | { type: "RESET_ALL" };
 
 /* ----------------------------- Hook output ----------------------------- */
 
-interface AggregatorDispatch {
+interface ArticleHandlerDispatch {
   setBasic: (field: keyof BasicForm, value: string) => void;
   setPreset: (field: keyof PresetForm, value: string | BlobsCount | LengthRange) => void;
-  setSourceInput: (sourceIndex: number, value: string) => void;
+  setSourceUrl: (sourceIndex: number, value: string) => void;
   setSourceUsage: (sourceIndex: number, field: keyof SourceUsageOptions, value: string | boolean) => void;
   addSource: () => void;
   removeSource: (sourceIndex: number) => void;
-  setMetadata: (field: keyof AggregatorMetadata, value: string | number | boolean) => void;
+  setMetadata: (field: keyof ArticleMetadata, value: string | number | boolean) => void;
+  setMode: (mode: 'single' | 'multi') => void;
   resetAll: () => void;
 }
 
-interface AggregatorValidation {
+interface ArticleHandlerValidation {
   canSavePreset: boolean;
-  canAggregate: boolean;
+  canSubmit: boolean; // Replaces canDigest/canAggregate
   canSubmitSources: boolean;
-  hasMaxSources: boolean;
-  canRemoveSource: boolean;
+  canAddSource: boolean; // Only true in multi mode
+  canRemoveSource: boolean; // Only true in multi mode with >1 source
 }
 
-interface AggregatorContextValue extends AggregatorState, AggregatorDispatch, AggregatorValidation {}
+interface ArticleHandlerContextValue extends ArticleHandlerState, ArticleHandlerDispatch, ArticleHandlerValidation {}
 
 /* ==========================================================================*/
 // Defaults
@@ -109,6 +113,7 @@ const DEFAULT_SOURCE_USAGE: SourceUsageOptions = {
   sourceText: "",
   verbatim: false,
   primary: false,
+  base: false,
 };
 
 const DEFAULT_SOURCE_INPUT: SourceInput = {
@@ -119,22 +124,23 @@ const DEFAULT_SOURCE_INPUT: SourceInput = {
 
 const DEFAULT_BASIC: BasicForm = { slug: "", headline: "" };
 
-const DEFAULT_METADATA: AggregatorMetadata = {
+const DEFAULT_METADATA: ArticleMetadata = {
   orgId: 1, // Default org ID
 };
 
-const INITIAL_STATE: AggregatorState = {
+const createInitialState = (mode: 'single' | 'multi'): ArticleHandlerState => ({
   basic: DEFAULT_BASIC,
   preset: DEFAULT_PRESET,
   sources: [{ ...DEFAULT_SOURCE_INPUT, id: `source-${Date.now()}` }], // Start with one source
   metadata: DEFAULT_METADATA,
-};
+  mode,
+});
 
 /* ==========================================================================*/
 // Reducer
 /* ==========================================================================*/
 
-function aggregatorReducer(state: AggregatorState, action: AggregatorAction): AggregatorState {
+function articleHandlerReducer(state: ArticleHandlerState, action: ArticleHandlerAction): ArticleHandlerState {
   switch (action.type) {
     case "SET_BASIC":
       return {
@@ -152,7 +158,7 @@ function aggregatorReducer(state: AggregatorState, action: AggregatorAction): Ag
           [action.field]: action.value as PresetForm[typeof action.field],
         },
       };
-    case "SET_SOURCE_INPUT":
+    case "SET_SOURCE_URL":
       return {
         ...state,
         sources: state.sources.map((source, index) =>
@@ -177,13 +183,15 @@ function aggregatorReducer(state: AggregatorState, action: AggregatorAction): Ag
         ),
       };
     case "ADD_SOURCE":
-      if (state.sources.length >= 6) return state; // Max 6 sources
+      // Only allow in multi mode
+      if (state.mode === 'single' || state.sources.length >= 6) return state;
       return {
         ...state,
         sources: [...state.sources, { ...DEFAULT_SOURCE_INPUT, id: `source-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }],
       };
     case "REMOVE_SOURCE":
-      if (state.sources.length <= 1) return state; // Min 1 source
+      // Only allow in multi mode with >1 source
+      if (state.mode === 'single' || state.sources.length <= 1) return state;
       return {
         ...state,
         sources: state.sources.filter((_, index) => index !== action.sourceIndex),
@@ -193,11 +201,18 @@ function aggregatorReducer(state: AggregatorState, action: AggregatorAction): Ag
         ...state,
         metadata: {
           ...state.metadata,
-          [action.field]: action.value as AggregatorMetadata[typeof action.field],
+          [action.field]: action.value as ArticleMetadata[typeof action.field],
         },
       };
+    case "SET_MODE":
+      return {
+        ...state,
+        mode: action.mode,
+        // When switching to single mode, keep only first source
+        sources: action.mode === 'single' ? [state.sources[0]] : state.sources,
+      };
     case "RESET_ALL":
-      return INITIAL_STATE;
+      return createInitialState(state.mode);
     default:
       return state;
   }
@@ -207,70 +222,79 @@ function aggregatorReducer(state: AggregatorState, action: AggregatorAction): Ag
 // Context + Provider
 /* ==========================================================================*/
 
-const AggregatorContext = createContext<AggregatorContextValue | undefined>(undefined);
+const ArticleHandlerContext = createContext<ArticleHandlerContextValue | undefined>(undefined);
 
-function AggregatorProvider({ children, initialState }: { children: ReactNode; initialState: Partial<AggregatorState> | undefined }) {
+interface ArticleHandlerProviderProps {
+  children: ReactNode;
+  initialMode?: 'single' | 'multi';
+  initialState?: Partial<ArticleHandlerState>;
+}
 
-  const mergedState = initialState ? { ...INITIAL_STATE, ...initialState } : INITIAL_STATE;
-  const [state, dispatch] = useReducer(aggregatorReducer, mergedState);
+function ArticleHandlerProvider({ children, initialMode = 'single', initialState }: ArticleHandlerProviderProps) {
+  const baseState = createInitialState(initialMode);
+  const mergedState = initialState ? { ...baseState, ...initialState } : baseState;
+  const [state, dispatch] = useReducer(articleHandlerReducer, mergedState);
 
   /* ---------------------------- Dispatch API ---------------------------- */
-  const setBasic: AggregatorDispatch["setBasic"] = (field, value) => dispatch({ type: "SET_BASIC", field, value });
+  const setBasic: ArticleHandlerDispatch["setBasic"] = (field, value) => dispatch({ type: "SET_BASIC", field, value });
 
-  const setPreset: AggregatorDispatch["setPreset"] = (field, value) => dispatch({ type: "SET_PRESET", field, value });
+  const setPreset: ArticleHandlerDispatch["setPreset"] = (field, value) => dispatch({ type: "SET_PRESET", field, value });
 
-  const setSourceInput: AggregatorDispatch["setSourceInput"] = (sourceIndex, value) => dispatch({ type: "SET_SOURCE_INPUT", sourceIndex, value });
+  const setSourceUrl: ArticleHandlerDispatch["setSourceUrl"] = (sourceIndex, value) => dispatch({ type: "SET_SOURCE_URL", sourceIndex, value });
 
-  const setSourceUsage: AggregatorDispatch["setSourceUsage"] = (sourceIndex, field, value) => dispatch({ type: "SET_SOURCE_USAGE", sourceIndex, field, value });
+  const setSourceUsage: ArticleHandlerDispatch["setSourceUsage"] = (sourceIndex, field, value) => dispatch({ type: "SET_SOURCE_USAGE", sourceIndex, field, value });
 
-  const addSource: AggregatorDispatch["addSource"] = () => dispatch({ type: "ADD_SOURCE" });
+  const addSource: ArticleHandlerDispatch["addSource"] = () => dispatch({ type: "ADD_SOURCE" });
 
-  const removeSource: AggregatorDispatch["removeSource"] = (sourceIndex) => dispatch({ type: "REMOVE_SOURCE", sourceIndex });
+  const removeSource: ArticleHandlerDispatch["removeSource"] = (sourceIndex) => dispatch({ type: "REMOVE_SOURCE", sourceIndex });
 
-  const setMetadata: AggregatorDispatch["setMetadata"] = (field, value) => dispatch({ type: "SET_METADATA", field, value });
+  const setMetadata: ArticleHandlerDispatch["setMetadata"] = (field, value) => dispatch({ type: "SET_METADATA", field, value });
 
-  const resetAll: AggregatorDispatch["resetAll"] = () => dispatch({ type: "RESET_ALL" });
+  const setMode: ArticleHandlerDispatch["setMode"] = (mode) => dispatch({ type: "SET_MODE", mode });
+
+  const resetAll: ArticleHandlerDispatch["resetAll"] = () => dispatch({ type: "RESET_ALL" });
 
   /* ------------------------------ Validation --------------------------- */
   const canSavePreset = state.preset.title.trim() !== "" && state.preset.instructions.trim() !== "";
 
-  // Aggregation action requires slug + at least one source with non-empty sourceText
-  const canAggregate = state.basic.slug.trim() !== "" && 
+  // Submit action requires slug + at least one source with non-empty sourceText
+  const canSubmit = state.basic.slug.trim() !== "" && 
     state.sources.some(source => source.usage.sourceText.trim() !== "");
 
   const canSubmitSources = state.sources.every(source => source.url.trim() !== "");
 
-  const hasMaxSources = state.sources.length >= 6;
-  const canRemoveSource = state.sources.length > 1;
+  const canAddSource = state.mode === 'multi' && state.sources.length < 6;
+  const canRemoveSource = state.mode === 'multi' && state.sources.length > 1;
 
   /* --------------------------- Provided value --------------------------- */
-  const value: AggregatorContextValue = {
+  const value: ArticleHandlerContextValue = {
     ...state,
     setBasic,
     setPreset,
-    setSourceInput,
+    setSourceUrl,
     setSourceUsage,
     addSource,
     removeSource,
     setMetadata,
+    setMode,
     resetAll,
     canSavePreset,
-    canAggregate,
+    canSubmit,
     canSubmitSources,
-    hasMaxSources,
+    canAddSource,
     canRemoveSource,
   };
 
-  return <AggregatorContext.Provider value={value}>{children}</AggregatorContext.Provider>;
+  return <ArticleHandlerContext.Provider value={value}>{children}</ArticleHandlerContext.Provider>;
 }
 
 /* ==========================================================================*/
 // Hook
 /* ==========================================================================*/
 
-function useAggregator(): AggregatorContextValue {
-  const ctx = useContext(AggregatorContext);
-  if (!ctx) throw new Error("useAggregator must be used within <AggregatorProvider>");
+function useArticleHandler(): ArticleHandlerContextValue {
+  const ctx = useContext(ArticleHandlerContext);
+  if (!ctx) throw new Error("useArticleHandler must be used within <ArticleHandlerProvider>");
   return ctx;
 }
 
@@ -278,5 +302,5 @@ function useAggregator(): AggregatorContextValue {
 // Exports
 /* ==========================================================================*/
 
-export { AggregatorProvider, useAggregator };
-export type { AggregatorState };
+export { ArticleHandlerProvider, useArticleHandler };
+export type { ArticleHandlerState, SourceInput, SourceUsageOptions }; 

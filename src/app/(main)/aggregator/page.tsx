@@ -1,8 +1,9 @@
 /* ==========================================================================*/
-// page.tsx — Aggregator page layout with resizable panels
+// page.tsx — Unified Aggregator page layout with resizable panels
 /* ==========================================================================*/
-// Purpose: Show aggregator builder. If ?slug=&version= are provided we pre-fill the
-//          context with that article's data; otherwise the builder is blank.
+// Purpose: Show aggregator builder using unified context and shared components.
+//          If ?slug=&version= are provided we pre-fill the context with that 
+//          article's data; otherwise the builder is blank.
 // Sections: Imports ▸ Utility Functions ▸ Data fetch ▸ Component ▸ Exports
 /* ==========================================================================*/
 
@@ -17,15 +18,15 @@ import React from "react";
 import { getArticleByOrgSlugVersion, getOrgPresets } from "@/db/dal";
 import type { Article } from "@/db/schema";
 
-// Aggregator UI (all client components) -------------------------------------
+// Shared UI Components -------------------------------------------------------
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { BasicAggregatorInputs } from "@/components/aggregator/basic";
-import { AggregatorActions } from "@/components/aggregator/actions";
-import { SourceInputs } from "@/components/aggregator/source";
-import { PresetsManager } from "@/components/aggregator/presets";
+import { BasicArticleInputs } from "@/components/article-handling/shared/basic";
+import { ArticleActions } from "@/components/article-handling/shared/actions";
+import { SourceInputs } from "@/components/article-handling/shared/source";
+import { PresetsManager } from "@/components/article-handling/shared/presets";
 
-// Context --------------------------------------------------------------------
-import { AggregatorProvider, type AggregatorState } from "@/components/aggregator/aggregator-context";
+// Unified Context ------------------------------------------------------------
+import { ArticleHandlerProvider, type ArticleHandlerState } from "@/components/article-handling/shared/article-handler-context";
 
 /* ==========================================================================*/
 // Utility Functions
@@ -34,19 +35,19 @@ import { AggregatorProvider, type AggregatorState } from "@/components/aggregato
 /**
  * buildInitialStateFromInputs
  * 
- * Converts Article inputs from the database into AggregatorState format
+ * Converts Article inputs from the database into ArticleHandlerState format
  * for pre-filling the aggregator form with up to 6 sources.
  * 
  * @param inputs - The article inputs from the database
  * @param orgId - Organization ID
  * @param currentVersion - The current version of the article
- * @returns Partial AggregatorState for context initialization
+ * @returns Partial ArticleHandlerState for context initialization
  */
 function buildInitialStateFromInputs(
   inputs: Article, 
   orgId: number = 1,
   currentVersion: number = 1
-): Partial<AggregatorState> {
+): Partial<ArticleHandlerState> {
   // Build sources array from database fields
   const sources = [];
   
@@ -60,6 +61,7 @@ function buildInitialStateFromInputs(
       accredit: inputs.inputSourceAccredit1,
       verbatim: inputs.inputSourceVerbatim1,
       primary: inputs.inputSourcePrimary1,
+      base: false, // Default to false, can be changed in UI
     }
   });
 
@@ -74,6 +76,7 @@ function buildInitialStateFromInputs(
         accredit: inputs.inputSourceAccredit2 || "",
         verbatim: inputs.inputSourceVerbatim2 || false,
         primary: inputs.inputSourcePrimary2 || false,
+        base: false,
       }
     });
   }
@@ -88,6 +91,7 @@ function buildInitialStateFromInputs(
         accredit: inputs.inputSourceAccredit3 || "",
         verbatim: inputs.inputSourceVerbatim3 || false,
         primary: inputs.inputSourcePrimary3 || false,
+        base: false,
       }
     });
   }
@@ -102,6 +106,7 @@ function buildInitialStateFromInputs(
         accredit: inputs.inputSourceAccredit4 || "",
         verbatim: inputs.inputSourceVerbatim4 || false,
         primary: inputs.inputSourcePrimary4 || false,
+        base: false,
       }
     });
   }
@@ -116,6 +121,7 @@ function buildInitialStateFromInputs(
         accredit: inputs.inputSourceAccredit5 || "",
         verbatim: inputs.inputSourceVerbatim5 || false,
         primary: inputs.inputSourcePrimary5 || false,
+        base: false,
       }
     });
   }
@@ -130,6 +136,7 @@ function buildInitialStateFromInputs(
         accredit: inputs.inputSourceAccredit6 || "",
         verbatim: inputs.inputSourceVerbatim6 || false,
         primary: inputs.inputSourcePrimary6 || false,
+        base: false,
       }
     });
   }
@@ -141,7 +148,7 @@ function buildInitialStateFromInputs(
     },
     sources,
     preset: {
-      title: inputs.inputPresetTitle ?? "",
+      title: inputs.inputPresetTitle ?? "", 
       instructions: inputs.inputPresetInstructions,
       blobs: inputs.inputPresetBlobs,
       length: inputs.inputPresetLength,
@@ -150,6 +157,7 @@ function buildInitialStateFromInputs(
       orgId,
       currentVersion,
     },
+    mode: 'multi', // Always multi mode for aggregator
   };
 }
 
@@ -158,12 +166,12 @@ function buildInitialStateFromInputs(
 /* ==========================================================================*/
 
 /**
- * AggregatorPage
+ * Aggregator2Page
  *
- * Main aggregator page with resizable left panel for input forms and right panel for presets manager.
- * Uses 70/30 split with user-adjustable resize handle.
+ * Unified aggregator page with resizable left panel for input forms and right panel for presets manager.
+ * Uses shared components and unified context. 70/30 split with user-adjustable resize handle.
  */
-async function AggregatorPage({ 
+async function Aggregator2Page({ 
   searchParams 
 }: { 
   searchParams: Promise<{ slug?: string; version?: string }> 
@@ -176,7 +184,7 @@ async function AggregatorPage({
   const presets = await getOrgPresets(ORG_ID);
 
   /* ------------------------- 3. Fetch article (optional) ---------------- */
-  let initialState: Partial<AggregatorState> | undefined;
+  let initialState: Partial<ArticleHandlerState> | undefined;
 
   if (slug) {
     try {
@@ -197,33 +205,36 @@ async function AggregatorPage({
     }
   }
 
-  console.log("🔍 AggregatorPage version:", version ? Number(version) : 1);
+  console.log("🔍 Aggregator2Page version:", version ? Number(version) : 1);
 
-  // For new articles, make sure we have the orgId in metadata
+  // For new articles, make sure we have the orgId in metadata and set multi mode
   if (!initialState) {
     initialState = {
       metadata: {
         orgId: ORG_ID,
         currentVersion: version ? Number(version) : 1,
       },
+      mode: 'multi',
     };
+  } else {
+    // Ensure mode is set to multi even when loading existing article
+    initialState.mode = 'multi';
   }
 
-  console.log("🔍 AggregatorPage initialState:", initialState);
+  console.log("🔍 Aggregator2Page initialState:", initialState);
 
   /* ------------------------- 4. Render client tree --------------------- */
   return (
-    <AggregatorProvider initialState={initialState}>
+    <ArticleHandlerProvider initialMode="multi" initialState={initialState}>
       <div className="h-[calc(100vh-4rem)] group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(100vh-3rem)] transition-[height] ease-linear">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Start of Left Panel --- */}
           <ResizablePanel defaultSize={65} minSize={60} maxSize={70} className="">
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-12">
-
-                <BasicAggregatorInputs />
+                <BasicArticleInputs />
                 <SourceInputs />
-                <AggregatorActions />   
+                <ArticleActions />   
               </div>
             </div>
           </ResizablePanel>
@@ -238,7 +249,7 @@ async function AggregatorPage({
           {/* End of Right Panel ---- */}
         </ResizablePanelGroup>
       </div>
-    </AggregatorProvider>
+    </ArticleHandlerProvider>
   );
 }
 
@@ -246,4 +257,4 @@ async function AggregatorPage({
 // Public Component Exports
 /* ==========================================================================*/
 
-export default AggregatorPage;
+export default Aggregator2Page;

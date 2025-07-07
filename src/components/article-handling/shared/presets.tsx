@@ -1,9 +1,10 @@
 "use client";
 
 /* ==========================================================================*/
-// presets.tsx — Preset management component (Digest context version)
+// presets.tsx — Unified preset management component
 /* ==========================================================================*/
-// Purpose: Centralised UI for selecting, editing, and saving digest presets.
+// Purpose: Centralised UI for selecting, editing, and saving article presets.
+//          Works with both single-source (digest) and multi-source (aggregate) modes.
 //          Simplified UX: selected presets can only be updated (title disabled),
 //          new presets created via "New" or "Duplicate" actions.
 // Sections: Imports, Types, Component, Exports
@@ -39,7 +40,7 @@ import { Info } from "lucide-react";
 // Local modules -------------------------------------------------------------
 import { Preset } from "@/db/schema";
 import type { BlobsCount, LengthRange } from "@/db/schema";
-import { useDigest } from "./digest-context";
+import { useArticleHandler } from "./article-handler-context";
 
 /* ==========================================================================*/
 // Types and Interfaces
@@ -54,8 +55,8 @@ interface PresetsProps {
 /* ==========================================================================*/
 
 function PresetsManager({ presets = [] }: PresetsProps) {
-  /* ------------------------ digest context bindings ---------------------- */
-  const { preset, setPreset, canSavePreset } = useDigest();
+  /* ------------------------ article handler context bindings ---------------------- */
+  const { preset, setPreset, canSavePreset, mode } = useArticleHandler();
 
   /* ----------------------------- local state ----------------------------- */
   const [selectedId, setSelectedId] = useState<string>("");
@@ -72,8 +73,8 @@ function PresetsManager({ presets = [] }: PresetsProps) {
   const resetForm = () => {
     setPreset("title", "");
     setPreset("instructions", "");
-    setPreset("blobs", "0");
-    setPreset("length", "100-250");
+    setPreset("blobs", "4");
+    setPreset("length", "700-850");
   };
 
   const loadPresetIntoForm = (preset: Preset) => {
@@ -184,8 +185,8 @@ function PresetsManager({ presets = [] }: PresetsProps) {
 
   /* ------------------------- debug logging effect ----------------------- */
   useEffect(() => {
-    console.log("[Preset ctx]", preset);
-  }, [preset]);
+    console.log(`[${mode === 'single' ? 'Digest' : 'Aggregate'} Preset ctx]`, preset);
+  }, [preset, mode]);
 
   /* --------------------------- render helpers --------------------------- */
   const handleField = (field: keyof typeof preset, val: string) =>
@@ -300,13 +301,13 @@ function PresetsManager({ presets = [] }: PresetsProps) {
         <div className="space-y-2">
           <Label className="text-sm font-medium">Blobs</Label>
           <div className="grid grid-cols-4 gap-2">
-            {[0, 1, 2, 3, 4, 5, 6].map((num) => (
+            {["1", "2", "3", "4", "5", "6"].map((num) => (
               <Button
                 key={num}
-                variant={num.toString() === preset.blobs ? "default" : "outline"}
+                variant={num === preset.blobs ? "default" : "outline"}
                 size="sm"
                 className="h-8"
-                onClick={() => handleField("blobs", num.toString())}
+                onClick={() => handleField("blobs", num)}
               >
                 {num}
               </Button>
@@ -346,4 +347,4 @@ function PresetsManager({ presets = [] }: PresetsProps) {
 /* ==========================================================================*/
 
 export { PresetsManager };
-export type { PresetsProps };
+export type { PresetsProps }; 

@@ -1,9 +1,9 @@
 "use client";
 
 /* ==========================================================================*/
-// actions.tsx — Aggregator actions component
+// actions.tsx — Unified actions component for article workflows
 /* ==========================================================================*/
-// Purpose: Action buttons for aggregator workflow (Add Source, Aggregate)
+// Purpose: Action buttons for article workflows (Add Source in multi mode, Go button)
 // Sections: Imports, Component, Exports
 
 /* ==========================================================================*/
@@ -18,36 +18,42 @@ import { Button } from "@/components/ui/button";
 
 // External Packages -----
 import { Loader2, Plus } from "lucide-react";
-import { useAggregator } from "./aggregator-context";
 
 // Local Files ---------------------------------------------------------------
-import { useDigestSubmission } from "@/hooks/use-digest-submission";
+import { useArticleHandler } from "./article-handler-context";
+import { usePipelineSubmission } from "@/hooks/use-submission";
 
 /* ==========================================================================*/
 // Main Component
 /* ==========================================================================*/
 
-function AggregatorActions() {
-  // Import the Aggregator Context ----
-  const { basic, preset, sources, metadata, canAggregate, addSource, hasMaxSources } = useAggregator();
+function ArticleActions() {
+  // Import the Article Handler Context ----
+  const { 
+    basic, 
+    preset, 
+    sources, 
+    metadata, 
+    mode,
+    canSubmit, 
+    addSource, 
+    canAddSource 
+  } = useArticleHandler();
   
-  // Use the custom digest submission hook ----
-  const { handleSubmit, isLoading } = useDigestSubmission();
+  // Use the unified pipeline submission hook ----
+  const { triggerPipeline, isLoading } = usePipelineSubmission();
 
-  const handleAggregateClick = async () => {
-    // Build request data with multiple sources
+  const handleGoClick = async () => {
+    // Build request data compatible with both modes
     const requestData = {
       slug: basic.slug,
       headline: basic.headline,
-      sources: sources.map((source, index) => ({
-        sourceUsage: {
-          description: source.usage.description,
-          accredit: source.usage.accredit,
-          sourceText: source.usage.sourceText,
-          verbatim: source.usage.verbatim,
-          primary: source.usage.primary,
-        },
-        sourceIndex: index + 1, // 1-based indexing for database
+      sources: sources.map(source => ({
+        description: source.usage.description,
+        accredit: source.usage.accredit,
+        sourceText: source.usage.sourceText,
+        verbatim: source.usage.verbatim,
+        primary: source.usage.primary,
       })),
       instructions: {
         instructions: preset.instructions,
@@ -63,12 +69,12 @@ function AggregatorActions() {
       },
     };
 
-    // Submit using the hook
-    // await handleSubmit(requestData);
+    // Submit using the unified hook
+    await triggerPipeline(requestData, mode);
   };
 
   const handleAddSource = () => {
-    if (!hasMaxSources) {
+    if (canAddSource) {
       addSource();
     }
   };
@@ -76,19 +82,26 @@ function AggregatorActions() {
   // Render the component ----
   return (
     <div className="flex justify-between items-center pb-6">
-      <Button 
-        onClick={handleAddSource} 
-        disabled={hasMaxSources} 
-        variant="outline"
-        className="disabled:opacity-50 disabled:cursor-default"
-      >
-        <Plus className="mr-2 h-4 w-4" />
-        Add Source ({sources.length}/6)
-      </Button>
+      {/* Add Source Button - Only show in multi mode */}
+      {mode === 'multi' && (
+        <Button 
+          onClick={handleAddSource} 
+          disabled={!canAddSource} 
+          variant="outline"
+          className="disabled:opacity-50 disabled:cursor-default"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Source ({sources.length}/6)
+        </Button>
+      )}
       
+      {/* Spacer for single mode to push Go button to the right */}
+      {mode === 'single' && <div />}
+      
+      {/* Main Action Button */}
       <Button 
-        onClick={handleAggregateClick} 
-        disabled={!canAggregate || isLoading} 
+        onClick={handleGoClick} 
+        disabled={!canSubmit || isLoading} 
         className="bg-blue-500 hover:bg-blue-600"
       >
         {isLoading ? (
@@ -97,7 +110,7 @@ function AggregatorActions() {
             Processing...
           </>
         ) : (
-          "Aggregate"
+          "Go"
         )}
       </Button>
     </div>
@@ -108,4 +121,4 @@ function AggregatorActions() {
 // Public Component Exports
 /* ==========================================================================*/
 
-export { AggregatorActions }; 
+export { ArticleActions }; 

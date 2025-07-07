@@ -1,9 +1,10 @@
 "use client";
 
 /* ==========================================================================*/
-// source.tsx — Complete source component with input and text area
+// source.tsx — Unified source component with input and text area
 /* ==========================================================================*/
-// Purpose: Complete source input and text area component for a single source
+// Purpose: Complete source input and text area component that works with unified context
+//          Adapts to both single-source (digest) and multi-source (aggregate) modes
 // Sections: Imports, Component, Exports
 
 /* ==========================================================================*/
@@ -11,7 +12,7 @@
 /* ==========================================================================*/
 
 // React core ----------------------------------------------------------------
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 // shadcn/ui components ------------------------------------------------------
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,9 @@ import { Info, Trash2, Maximize2, Minimize2 } from "lucide-react";
 import wordCount from "word-count";
 
 // Context -------------------------------------------------------------------
-import { useAggregator } from "./aggregator-context";
+import { useArticleHandler } from "./article-handler-context";
+
+// Local Components ----------------------------------------------------------
 import { VerbatimCheckbox } from "./verbatim-checkbox";
 
 /* ==========================================================================*/
@@ -42,22 +45,17 @@ interface SourceInputProps {
 /* ==========================================================================*/
 
 function SourceInput({ sourceIndex }: SourceInputProps) {
-  // Import the Aggregator Context ----
-  const { sources, setSourceInput, setSourceUsage, removeSource, canRemoveSource } = useAggregator();
-
-  // Get the specific source data
-  const source = sources[sourceIndex];
-  if (!source) return null;
-
-  // Local state
+  const { sources, mode, setSourceUrl, setSourceUsage, removeSource } = useArticleHandler();
+  
+  // Move all hooks to the top before any conditional logic
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [textExpanded, setTextExpanded] = useState(false);
+  
+  const source = sources[sourceIndex];
+  const canRemoveSource = mode === "multi" && sources.length > 1;
 
-  /* -------------------------- debug effect ------------------------------ */
-  useEffect(() => {
-    console.log(`[Source ${sourceIndex + 1} ctx]`, { sourceInput: source.url, sourceUsage: source.usage });
-  }, [sourceIndex, source]);
+  if (!source) return null;
 
   /* ---------------------------- handlers -------------------------------- */
   const handleGetRawText = async () => {
@@ -143,16 +141,19 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
   const wordCountValue = wordCount(source.usage.sourceText);
   const maxWords = 50_000;
   const isFirstSource = sourceIndex === 0;
+  const isRequiredSource = mode === 'single' || isFirstSource; // First source always required, all sources required in single mode
 
   return (
-    <div className="space-y-6 border rounded-lg p-6 bg-muted/10">
+    <div className="space-y-6 border border-border/50 rounded-md p-6 bg-muted/5">
       {/* Header --- */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-foreground">
-          {isFirstSource ? "Source 1" : `Source ${sourceIndex + 1}`}
-          {isFirstSource && <span className="text-xs text-red-600 ml-2">required</span>}
-        </h3>
-      </div>
+      {mode === 'multi' && (
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-foreground">
+            {`Source ${sourceIndex + 1}`}
+            {isRequiredSource && <span className="text-xs text-red-600 ml-2">required</span>}
+          </h3>
+        </div>
+      )}
 
       {/* Source Input Section --- */}
       <div className="space-y-4">
@@ -177,7 +178,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
               placeholder="Text / File / Link" 
               className="w-full" 
               value={source.url} 
-              onChange={(e) => setSourceInput(sourceIndex, e.target.value)} 
+              onChange={(e) => setSourceUrl(sourceIndex, e.target.value)} 
             />
           </div>
           <div className="flex items-end">
@@ -269,67 +270,39 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
                       <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Mark this as a primary source for the aggregator</p>
+                      <p>Mark this as a primary source for the {mode === 'single' ? 'digest' : 'aggregator'}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
               </div>
 
-              {/* Verbatim Checkbox - Show for ALL sources but disable for non-first */}
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  className={`cursor-pointer ${!isFirstSource ? 'opacity-50' : ''}`}
-                  id={`verbatim-source-${sourceIndex}`} 
-                  checked={source.usage.verbatim} 
-                  disabled={!isFirstSource}
-                  onCheckedChange={(checked) => handleUsageField("verbatim", checked)} 
-                />
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={`verbatim-source-${sourceIndex}`} className={`text-sm font-medium cursor-pointer ${!isFirstSource ? 'opacity-50' : ''}`}>
-                    Use Verbatim
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {isFirstSource ? (
-                        <p>Use this source's text verbatim in the aggregation</p>
-                      ) : (
-                        <p>Make this the first source to enable verbatim usage</p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
+              {/* Base Source Checkbox - Only show in multi mode */}
+              {mode === 'multi' && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    className="cursor-pointer"
+                    id={`base-source-${sourceIndex}`} 
+                    checked={source.usage.base} 
+                    onCheckedChange={(checked) => handleUsageField("base", checked)} 
+                  />
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`base-source-${sourceIndex}`} className="text-sm font-medium cursor-pointer">
+                      Base Source
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Mark this as the base source for the aggregation</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Base Source Checkbox - Show for ALL sources but disable for non-first */}
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  className={`cursor-pointer ${!isFirstSource ? 'opacity-50' : ''}`}
-                  id={`base-source-${sourceIndex}`} 
-                  checked={source.usage.primary} 
-                  disabled={!isFirstSource}
-                  onCheckedChange={(checked) => handleUsageField("primary", checked)} 
-                />
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={`base-source-${sourceIndex}`} className={`text-sm font-medium cursor-pointer ${!isFirstSource ? 'opacity-50' : ''}`}>
-                    Base Source
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {isFirstSource ? (
-                        <p>Mark this as the main or most important source for the aggregator</p>
-                      ) : (
-                        <p>Make this the first source to enable base source selection</p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
+              )}
+
+              {/* Verbatim Checkbox - Show for ALL sources but adapt based on mode */}
+              <VerbatimCheckbox sourceIndex={sourceIndex} />
             </div>
           </div>
         </div>
@@ -362,7 +335,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
             className={`w-full resize-none transition-all duration-200 ${
               textExpanded ? "min-h-fit" : "min-h-[200px] max-h-[200px]"
             } ${
-              isFirstSource && !source.usage.sourceText.trim() 
+              isRequiredSource && !source.usage.sourceText.trim() 
                 ? "border-red-500 focus:border-red-500" 
                 : ""
             }`} 
@@ -383,7 +356,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
           <span className="text-sm text-muted-foreground">
             {wordCountValue.toLocaleString()}/{maxWords.toLocaleString()} words
           </span>
-          {!isFirstSource && canRemoveSource && (
+          {mode === 'multi' && !isFirstSource && canRemoveSource && (
             <Button 
               variant="ghost" 
               size="sm" 
@@ -405,11 +378,13 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
 /* ==========================================================================*/
 
 function SourceInputs() {
-  const { sources } = useAggregator();
+  const { sources } = useArticleHandler();
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-foreground">Sources</h2>
+      <h2 className="text-lg font-semibold text-foreground">
+        Source Information
+      </h2>
       <div className="space-y-4">
         {sources.map((source, index) => (
           <SourceInput key={source.id} sourceIndex={index} />
