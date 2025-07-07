@@ -116,7 +116,7 @@ async function step01ExtractFactQuotes(articleId: string, request: DigestRequest
     }
 
     // Call the API endpoint
-    const response = await fetch(`${baseUrl}/api/steps/01-extract-fact-quotes`, {
+    const response = await fetch(`/api/steps/01-extract-fact-quotes`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
