@@ -152,7 +152,7 @@ Example rewrite:
 Nume has previously argued that the polls don't support a Carlson win in the 2024 election. (Source 1) 
 But in an interview last month, he claimed Carlson is "a lock in." (Source 1) 
 
-3. IMPORTANT: Remove the very last paragraph or sentence if it is "waflle" and pure opinion or summary. For example:
+3. IMPORTANT: Remove the very last paragraph or sentence if it is "waflle" and pure opinion or summary. THIS IS ABSOLUTELY CRITICAL, NO "WAF For example:
 
 Example input: 
 { imagine a whole article here and then...}...
@@ -162,6 +162,7 @@ Example rewrite:
 { imagine a whole article here and then the last sentence was removed since it was just waffle/summary}
 
 But don't remove it if it wasn't summary/waffle.
+
 
 NOTE: DON'T CHANGE ANYTHING ELSE IN THE ARTICLE, AND MAKE SURE TO LEAVE THE SOURCE CREDITS
 NOTE: We own the rights and permissions to reprint this text.
