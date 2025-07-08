@@ -40,7 +40,7 @@ Rewrite the user's input verbatim but fix spelling or capitalization issues. Wri
 ###
 
 Example output format:
-<output article>
+<output>
 Sentence.
 
 Sentence.
@@ -50,7 +50,7 @@ Sentence.
 Sentence with a quote, "like this. Even if it has multiple sentences in it, quotes remain on the same line."
 
 [...]
-</output article>
+</output>
 
 <example>
 Example input:
@@ -73,7 +73,7 @@ Guinn turns 30 in November, according to CNN. (Source 1)
 </input article>
 
 Example output:
-<output article>
+<output>
 Guinn announced his return to the world of beatboxing in a video posted to Youtube on Thursday.
 
 "I'm back, baby," Guinn said after a long-winded speech.
@@ -89,7 +89,7 @@ This is his second retirement in two years.
 "But I mean it this time. I really do."
 
 Guinn turns 30 in November, according to CNN.
-</output article>
+</output>
 </example>
 `;
 
@@ -114,7 +114,7 @@ Rewrite this article verbatim but fix spelling or capitalization issues. Write s
 const ASSISTANT_PROMPT = `
 Here is the article reprinted word for word with spelling and capitalizations issues fixed. Each sentence is on a new line (unless it's in direct quotes).
 
-<output-article>
+<output>
 `;
 
 /* ==========================================================================*/
