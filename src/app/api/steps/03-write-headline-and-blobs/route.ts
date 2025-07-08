@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
           content: `Here is the attention-grabbing headline and the ${body.blobs} requested blobs based on the input and editor instructions. These magnetic blobs are only 10-20 words long and are written in zippy plain-english.`
         }
       ],
-      temperature: 0.5,
+      temperature: 0.45,
       maxTokens: 500,
     });
 
