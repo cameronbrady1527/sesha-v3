@@ -69,7 +69,7 @@ export async function sendCompletionEmail(
         to: [user.email],
         subject: `Article Complete: ${slug} version ${version}`,
         href: href,
-        name: user.firstName,
+        name: user.firstName || "User",
         slug: slug,
         version: version,
       }),
