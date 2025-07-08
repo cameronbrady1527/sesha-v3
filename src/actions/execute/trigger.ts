@@ -64,15 +64,37 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
     
     console.log(`🧹 Slug cleaned: "${originalSlug}" -> "${cleanedSlug}"`);
 
-    // Normalize both request types to have sources array
-    const sources = "source" in request ? [request.source] : request.sources;
-    const sourceType = "source" in request ? "single" : "multi";
+    // Convert sources to the format expected by createArticleRecord
+    let sources: { description: string; accredit: string; sourceText: string; verbatim: boolean; primary: boolean; }[];
+    let sourceType: "single" | "multi";
+    
+    if ("source" in request) {
+      // DigestRequest - single source
+      sources = [{
+        description: request.source.description,
+        accredit: request.source.accredit,
+        sourceText: request.source.sourceText,
+        verbatim: request.source.verbatim,
+        primary: request.source.primary,
+      }];
+      sourceType = "single";
+    } else {
+      // AggregateRequest - multiple sources
+      sources = request.sources.map(source => ({
+        description: "", // Source interface doesn't have description, so use empty string
+        accredit: source.accredit,
+        sourceText: source.text,
+        verbatim: source.useVerbatim,
+        primary: source.isPrimarySource,
+      }));
+      sourceType = "multi";
+    }
     
     // Build unified request for createArticleRecord
     const cleanedRequest = {
       metadata: request.metadata,
       slug: cleanedSlug,
-      headline: "headline" in request ? request.headline : "",
+      headline: request.headline,
       sources: sources,
       instructions: request.instructions,
       sourceType: sourceType,

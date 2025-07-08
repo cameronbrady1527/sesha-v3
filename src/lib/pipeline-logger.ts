@@ -32,8 +32,10 @@ interface PipelineLogData {
   wasChanged?: boolean
   systemPrompt?: string
   userPrompt?: string
+  assistantPrompt?: string
   systemPromptLength?: number
   userPromptLength?: number
+  assistantPromptLength?: number
   request?: unknown
   response?: unknown
   result?: unknown
@@ -149,7 +151,7 @@ class PipelineLogger {
   /**
    * Log formatted prompts for a step
    */
-  logStepPrompts(stepNumber: number, stepName: string, systemPrompt: string, userPrompt: string) {
+  logStepPrompts(stepNumber: number, stepName: string, systemPrompt: string, userPrompt: string, assistantPrompt?: string) {
     const logData: PipelineLogData = {
       step: `STEP_${stepNumber}_PROMPTS`,
       stepNumber,
@@ -158,8 +160,10 @@ class PipelineLogger {
       message: `Formatted prompts for ${stepName}`,
       systemPrompt,
       userPrompt,
+      assistantPrompt,
       systemPromptLength: systemPrompt.length,
-      userPromptLength: userPrompt.length
+      userPromptLength: userPrompt.length,
+      assistantPromptLength: assistantPrompt?.length
     }
     
     this.logger.info('Step prompts formatted', logData)

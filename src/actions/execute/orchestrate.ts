@@ -41,9 +41,9 @@ interface PipelineExecutionResult {
 
 /**
  * buildDigestRequestFromArticle
- * 
+ *
  * Build a DigestRequest from an article record for single-source processing.
- * 
+ *
  * @param article - Complete article record from database
  * @returns DigestRequest for pipeline execution
  */
@@ -73,80 +73,93 @@ function buildDigestRequestFromArticle(article: Article): DigestRequest {
 
 /**
  * buildAggregateRequestFromArticle
- * 
+ *
  * Build an AggregateRequest from an article record for multi-source processing.
- * 
+ *
  * @param article - Complete article record from database
  * @returns AggregateRequest for pipeline execution
  */
 function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
-  // Collect all non-null sources
+  // Collect all non-null sources and map to Source interface
   const sources = [];
-  
+  let sourceNumber = 1;
+
   // Source 1 (always present)
   if (article.inputSourceText1) {
     sources.push({
-      description: article.inputSourceDescription1 || "",
+      number: sourceNumber,
       accredit: article.inputSourceAccredit1 || "",
-      sourceText: article.inputSourceText1,
-      verbatim: article.inputSourceVerbatim1,
-      primary: article.inputSourcePrimary1,
+      text: article.inputSourceText1,
+      useVerbatim: article.inputSourceVerbatim1 || false,
+      isPrimarySource: article.inputSourcePrimary1 || false,
+      isBaseSource: article.inputSourceBase1 || false,
     });
+    sourceNumber++;
   }
-  
+
   // Source 2
   if (article.inputSourceText2) {
     sources.push({
-      description: article.inputSourceDescription2 || "",
+      number: sourceNumber,
       accredit: article.inputSourceAccredit2 || "",
-      sourceText: article.inputSourceText2,
-      verbatim: article.inputSourceVerbatim2 || false,
-      primary: article.inputSourcePrimary2 || false,
+      text: article.inputSourceText2,
+      useVerbatim: article.inputSourceVerbatim2 || false,
+      isPrimarySource: article.inputSourcePrimary2 || false,
+      isBaseSource: article.inputSourceBase2 || false,
     });
+    sourceNumber++;
   }
-  
+
   // Source 3
   if (article.inputSourceText3) {
     sources.push({
-      description: article.inputSourceDescription3 || "",
+      number: sourceNumber,
       accredit: article.inputSourceAccredit3 || "",
-      sourceText: article.inputSourceText3,
-      verbatim: article.inputSourceVerbatim3 || false,
-      primary: article.inputSourcePrimary3 || false,
+      text: article.inputSourceText3,
+      useVerbatim: article.inputSourceVerbatim3 || false,
+      isPrimarySource: article.inputSourcePrimary3 || false,
+      isBaseSource: article.inputSourceBase3 || false,
     });
+    sourceNumber++;
   }
-  
+
   // Source 4
   if (article.inputSourceText4) {
     sources.push({
-      description: article.inputSourceDescription4 || "",
+      number: sourceNumber,
       accredit: article.inputSourceAccredit4 || "",
-      sourceText: article.inputSourceText4,
-      verbatim: article.inputSourceVerbatim4 || false,
-      primary: article.inputSourcePrimary4 || false,
+      text: article.inputSourceText4,
+      useVerbatim: article.inputSourceVerbatim4 || false,
+      isPrimarySource: article.inputSourcePrimary4 || false,
+      isBaseSource: article.inputSourceBase4 || false,
     });
+    sourceNumber++;
   }
-  
+
   // Source 5
   if (article.inputSourceText5) {
     sources.push({
-      description: article.inputSourceDescription5 || "",
+      number: sourceNumber,
       accredit: article.inputSourceAccredit5 || "",
-      sourceText: article.inputSourceText5,
-      verbatim: article.inputSourceVerbatim5 || false,
-      primary: article.inputSourcePrimary5 || false,
+      text: article.inputSourceText5,
+      useVerbatim: article.inputSourceVerbatim5 || false,
+      isPrimarySource: article.inputSourcePrimary5 || false,
+      isBaseSource: article.inputSourceBase5 || false,
     });
+    sourceNumber++;
   }
-  
+
   // Source 6
   if (article.inputSourceText6) {
     sources.push({
-      description: article.inputSourceDescription6 || "",
+      number: sourceNumber,
       accredit: article.inputSourceAccredit6 || "",
-      sourceText: article.inputSourceText6,
-      verbatim: article.inputSourceVerbatim6 || false,
-      primary: article.inputSourcePrimary6 || false,
+      text: article.inputSourceText6,
+      useVerbatim: article.inputSourceVerbatim6 || false,
+      isPrimarySource: article.inputSourcePrimary6 || false,
+      isBaseSource: article.inputSourceBase6 || false,
     });
+    sourceNumber++;
   }
 
   return {
@@ -172,20 +185,20 @@ function buildAggregateRequestFromArticle(article: Article): AggregateRequest {
 
 /**
  * executePipelineByArticleId
- * 
+ *
  * Execute the appropriate pipeline for an article based on its source type.
  * Fetches the article from the database and routes to digest or aggregate pipeline.
- * 
+ *
  * @param articleId - The article ID to process
  * @returns Pipeline execution result
  */
 async function executePipelineByArticleId(articleId: string): Promise<PipelineExecutionResult> {
   console.log(`🎯 Starting pipeline execution for article: ${articleId}`);
-  
+
   try {
     // Fetch article from database
     const article = await getArticleById(articleId);
-    
+
     if (!article) {
       console.error(`❌ Article not found: ${articleId}`);
       return {
@@ -193,41 +206,38 @@ async function executePipelineByArticleId(articleId: string): Promise<PipelineEx
         error: "Article not found",
       };
     }
-    
+
     console.log(`📄 Article found: ${article.slug} (sourceType: ${article.sourceType})`);
 
     await updateArticleStatus(articleId, article.createdBy || "", "started");
 
-    
     // Route to appropriate pipeline based on source type
     if (article.sourceType === "single") {
       console.log("🔄 Routing to digest pipeline (single source)");
-      
+
       // Build digest request from article data
       const digestRequest = buildDigestRequestFromArticle(article);
-      
+
       // Execute digest pipeline
       const result = await runDigestPipeline(articleId, digestRequest);
-      
+
       return {
         success: result.success,
         articleId: articleId,
       };
-      
     } else if (article.sourceType === "multi") {
       console.log("🔄 Routing to aggregate pipeline (multi source)");
-      
+
       // Build aggregate request from article data
       const aggregateRequest = buildAggregateRequestFromArticle(article);
-      
+
       // Execute aggregate pipeline
-      const result = await runAggregatePipeline(aggregateRequest);
-      
+      const result = await runAggregatePipeline(articleId, aggregateRequest);
+
       return {
         success: result.success,
         articleId: articleId,
       };
-      
     } else {
       console.error(`❌ Unknown source type: ${article.sourceType}`);
       return {
@@ -235,7 +245,6 @@ async function executePipelineByArticleId(articleId: string): Promise<PipelineEx
         error: `Unknown source type: ${article.sourceType}`,
       };
     }
-    
   } catch (error) {
     console.error(`💥 Pipeline execution failed for article ${articleId}:`, error);
     return {

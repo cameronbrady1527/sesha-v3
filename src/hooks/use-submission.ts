@@ -38,6 +38,7 @@ interface PipelineSubmissionParams {
     sourceText: string;
     verbatim: boolean;
     primary: boolean;
+    base: boolean;
   }[];
   instructions: {
     instructions: string;
@@ -66,7 +67,7 @@ interface PipelineSubmissionParams {
  * @param sourceType - Type of source handling ('single' | 'multi')
  * @returns Complete DigestRequest or AggregateRequest for pipeline processing
  */
-async function buildPipelineRequest<T extends DigestRequest | AggregateRequest>(params: PipelineSubmissionParams, sourceType: "single" | "multi"): Promise<T> {
+async function buildPipelineRequest(params: PipelineSubmissionParams, sourceType: "single" | "multi"): Promise<DigestRequest | AggregateRequest> {
   // Get authenticated user info
   const authUser = await getAuthenticatedUserClient();
 
@@ -93,12 +94,19 @@ async function buildPipelineRequest<T extends DigestRequest | AggregateRequest>(
     return {
       ...baseRequest,
       source: params.sources[0], // Use first source for single-source (digest)
-    } as T;
+    };
   } else {
     return {
       ...baseRequest,
-      sources: params.sources, // Use all sources for multi-source (aggregate)
-    } as T;
+      sources: params.sources.map((source, index) => ({
+        number: index + 1,
+        accredit: source.accredit,
+        text: source.sourceText,
+        useVerbatim: source.verbatim,
+        isPrimarySource: source.primary,
+        isBaseSource: source.base, // First source is base source
+      })), // Use all sources for multi-source (aggregate)
+    };
   }
 }
 

@@ -18,6 +18,7 @@ import { updateArticleWithResults, updateArticleStatus } from "@/db/dal";
 
 // Local Utils ----
 import { createPipelineLogger, initializeGlobalLogger, closeGlobalLogger } from "@/lib/pipeline-logger";
+import { sendCompletionEmail } from "./email";
 
 // Local Types ----
 import type {
@@ -44,6 +45,8 @@ import type {
   Step05WriteArticleRequest,
   Step06ParaphraseArticleRequest,
   Step07SentencePerLineAttributionRequest,
+  StepVerbatimRequest,
+  StepVerbatimResponse,
 } from "@/types/digest";
 
 /* ==========================================================================*/
@@ -56,6 +59,10 @@ const baseUrl = process.env.NEXT_PUBLIC_URL;
 if (!baseUrl) {
   console.error("⚠️ Missing NEXT_PUBLIC_URL environment variable. Steps will not work correctly.");
 }
+
+/* ==========================================================================*/
+// Helper Functions
+/* ==========================================================================*/
 
 /**
  * handleStepFailure
@@ -690,6 +697,85 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
   }
 }
 
+/**
+ * stepVerbatim
+ *
+ * Process article using verbatim mode after steps 1-3.
+ *
+ * @param articleId - Article ID for tracking
+ * @param request - Digest request with source data
+ * @param logger - Pipeline logger for logging
+ * @returns Response with verbatim article
+ */
+async function stepVerbatim(
+  articleId: string, 
+  request: DigestRequest, 
+  logger: ReturnType<typeof createPipelineLogger> | null
+): Promise<StepVerbatimResponse> {
+  console.log("🚀 Verbatim Step: Processing article in verbatim mode");
+
+  try {
+    // Prepare the request for the verbatim API
+    const verbatimRequest: StepVerbatimRequest = {
+      sourceText: request.source.sourceText,
+    };
+
+    // Log the step request
+    if (logger) {
+      logger.logStepRequest(8, "Verbatim Processing", verbatimRequest);
+    }
+
+    // Call the verbatim API endpoint
+    const response = await fetch(`${baseUrl}/api/steps/digest-verbatim`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(verbatimRequest),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Verbatim API request failed: ${response.statusText}`);
+    }
+
+    const aiResult = await response.json();
+
+    // Log the API response
+    if (logger) {
+      logger.logStepResponse(8, "Verbatim Processing", aiResult);
+    }
+
+    // Wrap AI response with article management
+    const result: StepVerbatimResponse = {
+      articleId,
+      stepNumber: 8,
+      success: true,
+      formattedArticle: aiResult.formattedArticle || "",
+    };
+
+    // Log step completion
+    if (logger) {
+      logger.logStepComplete(8, "Verbatim Processing", result);
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Verbatim step failed:", error);
+
+    // Log the error
+    if (logger) {
+      logger.logError("VERBATIM_STEP_ERROR", error);
+    }
+
+    return {
+      articleId,
+      stepNumber: 8,
+      success: false,
+      formattedArticle: "",
+    };
+  }
+}
+
 /* ==========================================================================*/
 // Main Pipeline Handler
 /* ==========================================================================*/
@@ -707,6 +793,12 @@ async function step07SentencePerLineAttribution(articleId: string, request: Dige
  */
 async function runDigestPipeline(articleId: string, request: DigestRequest): Promise<PipelineResponse> {
   console.log(`🚀 Starting pipeline step execution for article: ${articleId}`);
+
+  // Check if verbatim mode is enabled
+  const isVerbatim = request.source.verbatim;
+  if (isVerbatim) {
+    console.log("📝 VERBATIM MODE ENABLED - Using verbatim processing flow");
+  }
 
   // Initialize pipeline logger
   const logger = createPipelineLogger(`${request.metadata.userId}-${request.slug}`);
@@ -745,68 +837,118 @@ async function runDigestPipeline(articleId: string, request: DigestRequest): Pro
     // Update status to 25% after step 3
     await updateArticleStatus(articleId, request.metadata.userId, "25%");
 
-    // Step 4: Write Article Outline
-    const step4Result = await step04WriteArticleOutline(articleId, request, step1Result, step2Result, step3Result, logger);
-    
-    if (!step4Result.success) {
-      return await handleStepFailure(4, articleId, request.metadata.userId, logger);
+    if (isVerbatim) {
+      // VERBATIM FLOW: Run verbatim step instead of steps 4-7
+      console.log("🔄 Executing verbatim processing step");
+      
+      const verbatimResult = await stepVerbatim(articleId, request, logger);
+      
+      if (!verbatimResult.success) {
+        return await handleStepFailure(8, articleId, request.metadata.userId, logger);
+      }
+
+      await updateArticleStatus(articleId, request.metadata.userId, "90%");
+
+      // Validate verbatim pipeline success
+      const isSuccessful = Boolean(verbatimResult.formattedArticle) && verbatimResult.formattedArticle.length > 100;
+
+      // Update article with verbatim results
+      await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, verbatimResult.formattedArticle);
+
+      // Build verbatim response
+      const response: PipelineResponse = {
+        success: isSuccessful,
+        step_one_extract_fact_quotes: step1Result,
+        step_two_summarize_facts: step2Result,
+        step_three_write_headline_and_blobs: step3Result,
+        verbatim_step: verbatimResult,
+      };
+
+      // Log pipeline completion
+      logger.logPipelineComplete(isSuccessful, response);
+
+      // Close logger and save logs
+      console.log(`📁 Verbatim pipeline logs saved to: ${logger.getLogFilePath()}`);
+      await closeGlobalLogger();
+
+      console.log("🎉 Verbatim pipeline completed successfully");
+
+      // Send completion email
+      await sendCompletionEmail(request.slug, request.metadata.currentVersion);
+
+      return response;
+
+    } else {
+      // NORMAL FLOW: Continue with steps 4-7
+      console.log("🔄 Executing normal processing flow (steps 4-7)");
+
+      // Step 4: Write Article Outline
+      const step4Result = await step04WriteArticleOutline(articleId, request, step1Result, step2Result, step3Result, logger);
+      
+      if (!step4Result.success) {
+        return await handleStepFailure(4, articleId, request.metadata.userId, logger);
+      }
+
+      // Step 5: Write Article
+      const step5Result = await step05WriteArticle(articleId, request, step2Result, step3Result, step4Result, logger);
+      
+      if (!step5Result.success) {
+        return await handleStepFailure(5, articleId, request.metadata.userId, logger);
+      }
+
+      // Update status to 50% after step 5
+      await updateArticleStatus(articleId, request.metadata.userId, "50%");
+
+      // Step 6: Paraphrase Article
+      const step6Result = await step06ParaphraseArticle(articleId, request, step5Result, logger);
+      
+      if (!step6Result.success) {
+        return await handleStepFailure(6, articleId, request.metadata.userId, logger);
+      }
+
+      // Update status to 75% after step 6
+      await updateArticleStatus(articleId, request.metadata.userId, "75%");
+
+      // Step 7: Sentence Per Line Attribution
+      const step7Result = await step07SentencePerLineAttribution(articleId, request, step6Result, logger);
+      
+      if (!step7Result.success) {
+        return await handleStepFailure(7, articleId, request.metadata.userId, logger);
+      }
+
+      await updateArticleStatus(articleId, request.metadata.userId, "90%");
+
+      // Validate pipeline success
+      const isSuccessful = validatePipelineSuccess(step1Result, step2Result, step3Result, step4Result, step5Result, step6Result, step7Result);
+
+      // Update article with results
+      await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step7Result.formattedArticle);
+
+      // Build response
+      const response: PipelineResponse = {
+        success: isSuccessful,
+        step_one_extract_fact_quotes: step1Result,
+        step_two_summarize_facts: step2Result,
+        step_three_write_headline_and_blobs: step3Result,
+        step_four_write_article_outline: step4Result,
+        step_five_write_article: step5Result,
+        step_seven_sentence_per_line_attribution: step7Result,
+      };
+
+      // Log pipeline completion
+      logger.logPipelineComplete(isSuccessful, response);
+
+      // Close logger and save logs
+      console.log(`📁 Pipeline logs saved to: ${logger.getLogFilePath()}`);
+      await closeGlobalLogger();
+
+      console.log("🎉 Pipeline steps completed successfully");
+
+      // Send completion email
+      await sendCompletionEmail(request.slug, request.metadata.currentVersion);
+
+      return response;
     }
-
-    // Step 5: Write Article
-    const step5Result = await step05WriteArticle(articleId, request, step2Result, step3Result, step4Result, logger);
-    
-    if (!step5Result.success) {
-      return await handleStepFailure(5, articleId, request.metadata.userId, logger);
-    }
-
-    // Update status to 50% after step 5
-    await updateArticleStatus(articleId, request.metadata.userId, "50%");
-
-    // Step 6: Paraphrase Article
-    const step6Result = await step06ParaphraseArticle(articleId, request, step5Result, logger);
-    
-    if (!step6Result.success) {
-      return await handleStepFailure(6, articleId, request.metadata.userId, logger);
-    }
-
-    // Update status to 75% after step 6
-    await updateArticleStatus(articleId, request.metadata.userId, "75%");
-
-    // Step 7: Sentence Per Line Attribution
-    const step7Result = await step07SentencePerLineAttribution(articleId, request, step6Result, logger);
-    
-    if (!step7Result.success) {
-      return await handleStepFailure(7, articleId, request.metadata.userId, logger);
-    }
-
-    await updateArticleStatus(articleId, request.metadata.userId, "90%");
-
-    // Validate pipeline success
-    const isSuccessful = validatePipelineSuccess(step1Result, step2Result, step3Result, step4Result, step5Result, step6Result, step7Result);
-
-    // Update article with results
-    await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step7Result.formattedArticle);
-
-    // Build response
-    const response: PipelineResponse = {
-      success: isSuccessful,
-      step_one_extract_fact_quotes: step1Result,
-      step_two_summarize_facts: step2Result,
-      step_three_write_headline_and_blobs: step3Result,
-      step_four_write_article_outline: step4Result,
-      step_five_write_article: step5Result,
-      step_seven_sentence_per_line_attribution: step7Result,
-    };
-
-    // Log pipeline completion
-    logger.logPipelineComplete(isSuccessful, response);
-
-    // Close logger and save logs
-    console.log(`📁 Pipeline logs saved to: ${logger.getLogFilePath()}`);
-    await closeGlobalLogger();
-
-    console.log("🎉 Pipeline steps completed successfully");
-    return response;
   } catch (error) {
     console.error("💥 Pipeline steps failed:", error);
 
