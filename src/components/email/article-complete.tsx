@@ -45,12 +45,12 @@ export function ArticleComplete({ name, slug, version, href }: ArticleCompletePr
       <Card className="border-0 shadow-none bg-transparent">
         <CardContent className="p-0 space-y-6">
           {/* Article Completed Banner */}
-          <div className="bg-black text-white text-center py-3 px-6">
+          {/* <div className="bg-black text-white text-center py-3 px-6">
             <div className="text-lg font-bold">
               <span className="bg-yellow-400 text-black px-2 py-1 mr-2">ARTICLE</span>
               COMPLETED
             </div>
-          </div>
+          </div> */}
 
           {/* Content */}
           <div className="space-y-4 px-4">
