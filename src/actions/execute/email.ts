@@ -42,7 +42,7 @@ if (!baseUrl) {
  */
 export async function sendCompletionEmail(
   slug: string, 
-  currentVersion: number | null
+  currentVersion: number | null,
 ): Promise<void> {
   try {
     // Get user email from database
