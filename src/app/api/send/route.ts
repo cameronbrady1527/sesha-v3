@@ -45,6 +45,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("Sending email to: ", body.to);
+    console.log("Subject: ", body.subject);
+    console.log("Href: ", body.href);
+    console.log("Name: ", body.name);
+    console.log("Slug: ", body.slug);
+    console.log("Version: ", body.version);
+
     const { data, error } = await resend.emails.send({
       from: 'updates@updates.sesha-systems.com',
       to: body.to,
@@ -53,11 +60,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      console.log("Error sending email: ", error);
       return NextResponse.json({ error }, { status: 500 });
     }
 
     return NextResponse.json(data);
   } catch (error) {
+    console.log("Error in send email route: ", error);
     return NextResponse.json({ error }, { status: 500 });
   }
 }
