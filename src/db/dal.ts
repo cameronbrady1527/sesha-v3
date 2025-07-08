@@ -254,42 +254,42 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       inputSourceAccredit1: articles.inputSourceAccredit1,
       inputSourceVerbatim1: articles.inputSourceVerbatim1,
       inputSourcePrimary1: articles.inputSourcePrimary1,
-
+      inputSourceBase1: articles.inputSourceBase1,
       // 2nd source
       inputSourceText2: articles.inputSourceText2,
       inputSourceDescription2: articles.inputSourceDescription2,
       inputSourceAccredit2: articles.inputSourceAccredit2,
       inputSourceVerbatim2: articles.inputSourceVerbatim2,
       inputSourcePrimary2: articles.inputSourcePrimary2,
-
+      inputSourceBase2: articles.inputSourceBase2,
       // 3rd source
       inputSourceText3: articles.inputSourceText3,
       inputSourceDescription3: articles.inputSourceDescription3,
       inputSourceAccredit3: articles.inputSourceAccredit3,
       inputSourceVerbatim3: articles.inputSourceVerbatim3,
       inputSourcePrimary3: articles.inputSourcePrimary3,
-
+      inputSourceBase3: articles.inputSourceBase3,
       // 4th source
       inputSourceText4: articles.inputSourceText4,
       inputSourceDescription4: articles.inputSourceDescription4,
       inputSourceAccredit4: articles.inputSourceAccredit4,
       inputSourceVerbatim4: articles.inputSourceVerbatim4,
       inputSourcePrimary4: articles.inputSourcePrimary4,
-
+      inputSourceBase4: articles.inputSourceBase4,
       // 5th source
       inputSourceText5: articles.inputSourceText5,
       inputSourceDescription5: articles.inputSourceDescription5,
       inputSourceAccredit5: articles.inputSourceAccredit5,
       inputSourceVerbatim5: articles.inputSourceVerbatim5,
       inputSourcePrimary5: articles.inputSourcePrimary5,
-
+      inputSourceBase5: articles.inputSourceBase5,
       // 6th source
       inputSourceText6: articles.inputSourceText6,
       inputSourceDescription6: articles.inputSourceDescription6,
       inputSourceAccredit6: articles.inputSourceAccredit6,
       inputSourceVerbatim6: articles.inputSourceVerbatim6,
       inputSourcePrimary6: articles.inputSourcePrimary6,
-
+      inputSourceBase6: articles.inputSourceBase6,  
       inputPresetTitle: articles.inputPresetTitle,
       inputPresetInstructions: articles.inputPresetInstructions,
       inputPresetBlobs: articles.inputPresetBlobs,

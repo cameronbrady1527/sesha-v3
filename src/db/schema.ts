@@ -113,37 +113,43 @@ export const articles = pgTable(
     inputSourceAccredit1: text("input_source_accredit_1").default("").notNull(),
     inputSourceVerbatim1: boolean("input_source_verbatim_1").default(false).notNull(),
     inputSourcePrimary1: boolean("input_source_primary_1").default(false).notNull(),
+    inputSourceBase1: boolean("input_source_base_1").default(false),
 
     inputSourceText2: text("input_source_text_2"),
     inputSourceDescription2: text("input_source_description_2").default(""),
     inputSourceAccredit2: text("input_source_accredit_2").default(""),
     inputSourceVerbatim2: boolean("input_source_verbatim_2").default(false),
     inputSourcePrimary2: boolean("input_source_primary_2").default(false),
+    inputSourceBase2: boolean("input_source_base_2").default(false),
 
     inputSourceText3: text("input_source_text_3"),
     inputSourceDescription3: text("input_source_description_3").default(""),
     inputSourceAccredit3: text("input_source_accredit_3").default(""),
     inputSourceVerbatim3: boolean("input_source_verbatim_3").default(false),
     inputSourcePrimary3: boolean("input_source_primary_3").default(false),
+    inputSourceBase3: boolean("input_source_base_3").default(false),
+
 
     inputSourceText4: text("input_source_text_4"),
     inputSourceDescription4: text("input_source_description_4").default(""),
     inputSourceAccredit4: text("input_source_accredit_4").default(""),
     inputSourceVerbatim4: boolean("input_source_verbatim_4").default(false),
     inputSourcePrimary4: boolean("input_source_primary_4").default(false),
+    inputSourceBase4: boolean("input_source_base_4").default(false),
 
     inputSourceText5: text("input_source_text_5"),
     inputSourceDescription5: text("input_source_description_5").default(""),
     inputSourceAccredit5: text("input_source_accredit_5").default(""),
     inputSourceVerbatim5: boolean("input_source_verbatim_5").default(false),
     inputSourcePrimary5: boolean("input_source_primary_5").default(false),
+    inputSourceBase5: boolean("input_source_base_5").default(false),
 
     inputSourceText6: text("input_source_text_6"),
     inputSourceDescription6: text("input_source_description_6").default(""),
     inputSourceAccredit6: text("input_source_accredit_6").default(""),
     inputSourceVerbatim6: boolean("input_source_verbatim_6").default(false),
     inputSourcePrimary6: boolean("input_source_primary_6").default(false),
-
+    inputSourceBase6: boolean("input_source_base_6").default(false),
     // Input (Non-source)
     inputPresetTitle: varchar("input_preset_title", { length: 255 }).default(""),
     inputPresetInstructions: text("input_preset_instructions").default("").notNull(),

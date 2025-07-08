@@ -55,6 +55,7 @@ function BasicArticleInputs() {
         sourceText: source.usage.sourceText,
         verbatim: source.usage.verbatim,
         primary: source.usage.primary,
+        base: source.usage.base,
       })),
       instructions: {
         instructions: preset.instructions,
