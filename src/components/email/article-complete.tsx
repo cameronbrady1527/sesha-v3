@@ -12,7 +12,7 @@
 import * as React from "react";
 
 // Next.js Core ---
-import Image from "next/image";
+// import Image from "next/image";
 
 // Local UI Components ---
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export function ArticleComplete({ name, slug, version, href }: ArticleCompletePr
     <div className="max-w-lg mx-auto bg-white">
       {/* Header with Logo */}
       <div className="text-center mb-6">
-        <Image src="/sesha.png" alt="Sesha" width={48} height={48} className="mx-auto mb-4" />
+        Sesha
       </div>
 
       {/* Main Card */}
