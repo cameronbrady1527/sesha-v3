@@ -235,6 +235,7 @@ export interface Step07RewriteArticle2Response extends BaseStepResponse {
 // ==========================================================================
 
 export interface Step08ColorCodeRequest {
+  sources: Source[]; // Sources with accumulated processing results
   articleStepOutputs: ArticleStepOutputs;
 }
 

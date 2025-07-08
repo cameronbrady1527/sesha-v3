@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step03-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step03-${Date.now()}`, 'digest');
     logger.logStepPrompts(3, "Write Headline and Blobs", systemPrompt, userPrompt);
 
     // Generate text using AI SDK

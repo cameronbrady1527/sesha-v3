@@ -15,7 +15,7 @@ import { db } from "./index";
 
 import { users, articles, organizations, presets } from "./schema";
 
-import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, BlobsCount, LengthRange , SourceType} from "./schema";
+import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, BlobsCount, LengthRange } from "./schema";
 
 import { eq, and, sql, desc } from "drizzle-orm";
 
@@ -393,8 +393,8 @@ export async function createArticleRecord(payload: {
     userId: string;
     orgId: string;
     currentVersion: number | null;
-    sourceType?: SourceType;
   };
+  sourceType: "single" | "multi";
   slug: string;
   headline: string;
   sources: Array<{
@@ -412,7 +412,7 @@ export async function createArticleRecord(payload: {
 }): Promise<Article> {
   const orgId = parseInt(payload.metadata.orgId);
 
-  const sourceType = (payload.metadata.sourceType as "single" | "multi") || "single";
+  const sourceType = payload.sourceType;
 
   // Validate that we have at least one source
   if (!payload.sources || payload.sources.length === 0) {

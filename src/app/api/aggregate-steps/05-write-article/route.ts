@@ -162,11 +162,11 @@ You must use simple, straightforward, nonrepetitive language so that the general
 For example, rather than writing something clunky and vague like "Sharing his thoughts on the health topic, Biden said he 'wouldn't expect it to get better,' emphasizing his concern." You would write something SPECIFIC, PITHY, and CLEAR like "Biden said he "wouldn't expect it to get better.'" since the quote speaks for itself and there is no need for extra analysis. 
 Today's Date: {{date}}
 
-{{#initialSources.0.useVerbatim}}You MUST begin the article with this exact FULL text with (Source 1 {{initialSources.0.accredit}}) written after each line: 
+{{#sources.0.useVerbatim}}You MUST begin the article with this exact FULL text with (Source 1 {{sources.0.accredit}}) written after each line: 
 <article-opening>
 {{stepOutputs.factsBitSplitting.0.text}}
 </article-opening>
-Note: make sure the sentences after flow seamlessly from the editor-written opening.{{/initialSources.0.useVerbatim}}
+Note: make sure the sentences after flow seamlessly from the editor-written opening.{{/sources.0.useVerbatim}}
 
 The article must be at least {{word_target}} words long. The more detail the better (but no repetition).
 
@@ -180,22 +180,22 @@ Source Article Input List (craft the aggregated news article from these source a
 NOTE: You may only include direct quotes in your article if they were already inside quotation marks as direct quotes in the source material
 
 <input source article 1>
-{{#initialSources.0.useVerbatim}}
-You MUST begin the article with this exact FULL text with (Source 1 {{initialSources.0.accredit}}) written after each line:
+{{#sources.0.useVerbatim}}
+You MUST begin the article with this exact FULL text with (Source 1 {{sources.0.accredit}}) written after each line:
 <article-opening>{{stepOutputs.factsBitSplitting.0.text}}</article-opening>
-{{/initialSources.0.useVerbatim}}
-{{^initialSources.0.useVerbatim}}
-{{#initialSources.0.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/initialSources.0.isPrimarySource}}
+{{/sources.0.useVerbatim}}
+{{^sources.0.useVerbatim}}
+{{#sources.0.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/sources.0.isPrimarySource}}
 Source 1: This is the most important source (Pull as much content as possible from this source)
 <source-1-content>
 {{stepOutputs.factsBitSplitting.0.text}}{{stepOutputs.factsBitSplitting2.0.text}}
 </source-1-content>
-{{/initialSources.0.useVerbatim}}
+{{/sources.0.useVerbatim}}
 </input source article 1>
 
 {{#stepOutputs.factsBitSplitting.1.text}}
 This is the second most important source:
-{{#initialSources.1.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/initialSources.1.isPrimarySource}}
+{{#sources.1.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/sources.1.isPrimarySource}}
 <input source article 2>
 <source-2-content>
 {{stepOutputs.factsBitSplitting.1.text}}{{stepOutputs.factsBitSplitting2.1.text}}
@@ -205,7 +205,7 @@ This is the second most important source:
 
 {{#stepOutputs.factsBitSplitting.2.text}}
 This is the third most important source:
-{{#initialSources.2.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/initialSources.2.isPrimarySource}}
+{{#sources.2.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/sources.2.isPrimarySource}}
 <input source article 3>
 <source-3-content>
 {{stepOutputs.factsBitSplitting.2.text}}{{stepOutputs.factsBitSplitting2.2.text}}
@@ -215,7 +215,7 @@ This is the third most important source:
 
 {{#stepOutputs.factsBitSplitting.3.text}}
 This is the fourth most important source (only take a bit from this):
-{{#initialSources.3.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/initialSources.3.isPrimarySource}}
+{{#sources.3.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/sources.3.isPrimarySource}}
 <input source article 4>
 <source-4-content>
 {{stepOutputs.factsBitSplitting.3.text}}{{stepOutputs.factsBitSplitting2.3.text}}
@@ -225,7 +225,7 @@ This is the fourth most important source (only take a bit from this):
 
 {{#stepOutputs.factsBitSplitting.4.text}}
 This is the fifth most important source (take very little from this):
-{{#initialSources.4.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/initialSources.4.isPrimarySource}}
+{{#sources.4.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/sources.4.isPrimarySource}}
 <input source article 5>
 <source-5-content>
 {{stepOutputs.factsBitSplitting.4.text}}{{stepOutputs.factsBitSplitting2.4.text}}
@@ -235,7 +235,7 @@ This is the fifth most important source (take very little from this):
 
 {{#stepOutputs.factsBitSplitting.5.text}}
 This is the sixth most important source (take very little from this):
-{{#initialSources.5.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/initialSources.5.isPrimarySource}}
+{{#sources.5.isPrimarySource}}Make sure to credit the author and publication when referencing this source: {{/sources.5.isPrimarySource}}
 <input source article 6>
 <source-6-content>
 {{stepOutputs.factsBitSplitting.5.text}}{{stepOutputs.factsBitSplitting2.5.text}}
@@ -253,14 +253,14 @@ Here is the {{word_target}} word article based on the provided source content an
 
 Additional notes on the article;
 - This article weaves together and intersperses the facts and direct quotes reported in the source articles to logically and holistically cover the story in my own words (with direct quotes kept unaltered and 100% verbatim to the source article inputs)
-- Each sentence references the source articles from which the information or direct quotes came in source tags, for example: (Source 1 {{initialSources.0.accredit}}, Source 3 {{initialSources.2.accredit}})
+- Each sentence references the source articles from which the information or direct quotes came in source tags, for example: (Source 1 {{sources.0.accredit}}, Source 3 {{sources.2.accredit}})
 - I have included the most interesting direct quotes from people quoted in the source articles, with a focus on the first source articles and less focus on the later source articles. I have kept direct quotes from people verbatim and I only included direct quotes that were already direct quotes inside quotation marks in the source article inputs. I have altered the phrasing of the speaker credits (for example, so-and-so said) to avoid plagiarism
 - There is no repetition in the article
 - I have not written a summary or conclusion at the end, I have instead simply ended the article after presenting the final facts and direct quotes
 - The article is {{word_target}} words long 
 - The article is written in a pithy, newsy style. Instead of phrases like "person said XYZ, emphasizing the gravity of the situation," I write in a pithy style writing phrases like "person said XYZ," so that I am not injecting repetition or analysis
 
-<aggregation>{{#initialSources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/initialSources.0.useVerbatim}}
+<aggregation>{{#sources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
 `;
 
 /* ==========================================================================*/
@@ -480,7 +480,7 @@ export async function POST(request: NextRequest) {
       { 
         length: body.length,
         instructions: body.instructions,
-        initialSources: body.sources,
+        sources: body.sources,
         stepOutputs: body.articleStepOutputs,
         word_target: wordTarget,
         sentence_guidance: sentenceGuidance,
@@ -494,13 +494,13 @@ export async function POST(request: NextRequest) {
       ASSISTANT_PROMPT,
       { 
         word_target: wordTarget,
-        initialSources: body.sources
+        sources: body.sources
       },
       PromptType.ASSISTANT
     );
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step05-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step05-${Date.now()}`, 'aggregate');
     logger.logStepPrompts(5, "Write Article", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach

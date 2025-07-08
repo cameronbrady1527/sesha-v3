@@ -150,10 +150,10 @@ You must weave together the sources and write each key point in your own words b
 
 Editor Notes:
 {{instructions}}
-Source 1 {{#initialSources.0.accredit}}{{initialSources.0.accredit}}{{/initialSources.0.accredit}} is most important and should determine the angle of the story
+Source 1 {{#sources.0.accredit}}{{sources.0.accredit}}{{/sources.0.accredit}} is most important and should determine the angle of the story
 Key point 1 MUST be the same angle as the headline
 
-Pull from each one of the source inputs and weave them together: {{stepOutputs.paraphrasingFacts.text}}
+Pull from each one of the source inputs and weave them together: {{keyPointInstructions}}
 Pull the most key points from Sources 1 and 2. Each key point must be an amalgamation of multiple facts and direct quotes across the whole of the source article inputs
 NOTE: You can only put things in direct quotes that were already in direct quotes in the source articles
 NOTE: Make sure to synthesize details and paraphrase the source material in this outline to avoid plagiarism
@@ -179,7 +179,7 @@ KEY POINTS IN ORDER:
 N: Cover/inlcude(insert next key point about the main story by weaving together the information from the source articles) (insert source tags)
 </outline>
 
-{{#initialSources.0.useVerbatim}}For the first few key points, indicate that the user must use the editor-provided opening verbatim. The next point must flow seamlessly from the editor-provided opening into the rest of the article{{/initialSources.0.useVerbatim}}
+{{#sources.0.useVerbatim}}For the first few key points, indicate that the user must use the editor-provided opening verbatim. The next point must flow seamlessly from the editor-provided opening into the rest of the article{{/sources.0.useVerbatim}}
 </instructions>
 
 Source Article Input List (craft the aggregated news article from these inputs):
@@ -187,14 +187,14 @@ Source Article Input List (craft the aggregated news article from these inputs):
 NOTE: Some of these articles may include different stories or events, so make sure that the key points are clear and accurate so that no stories are incorrectly "mixed up"
 
 <input source article 1>
-{{^initialSources.0.useVerbatim}}
+{{^sources.0.useVerbatim}}
 Source 1 (aim for about 5 key points about Source 1):
 <source-1-content>
 {{stepOutputs.factsBitSplitting.0.text}}
-{{stepOutputs.factsBitSplitting2.0.text}}{{/initialSources.0.useVerbatim}}
-{{#initialSources.0.useVerbatim}}
+{{stepOutputs.factsBitSplitting2.0.text}}{{/sources.0.useVerbatim}}
+{{#sources.0.useVerbatim}}
 Source 1 (this exact text will be the opening of the article, so the first few key points should indicate that this exact text is the opening):
-{{stepOutputs.factsBitSplitting.0.text}}{{/initialSources.0.useVerbatim}}
+{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
 </input source article 1>
 
 {{#stepOutputs.factsBitSplitting.1.text}}
@@ -260,6 +260,27 @@ KEY POINTS IN ORDER:`;
 /* ==========================================================================*/
 // Helper Functions
 /* ==========================================================================*/
+
+/**
+ * Generate hardcoded instructions based on number of sources
+ *
+ * @param sourceCount - Number of sources provided
+ * @returns String with specific instructions for the number of key points to pull
+ */
+function getKeyPointInstructions(sourceCount: number): string {
+  if (sourceCount >= 1 && sourceCount <= 3) {
+    return "Pull 12 key points for the outline.";
+  } else if (sourceCount === 4) {
+    return "Pull 14 key points for the outline.";
+  } else if (sourceCount === 5) {
+    return "Pull 16 key points for the outline.";
+  } else if (sourceCount >= 6) {
+    return "Pull at least 17 key points for the outline.";
+  } else {
+    // Fallback for edge case
+    return "Pull 12 key points for the outline.";
+  }
+}
 
 /**
  * Get example outlines based on verbatim flag
@@ -433,6 +454,9 @@ export async function POST(request: NextRequest) {
     // Get appropriate examples based on verbatim flag
     const exampleOutlines = getExampleOutlines(isVerbatim);
 
+    // Generate key point instructions based on source count
+    const keyPointInstructions = getKeyPointInstructions(body.sources.length);
+
     // Format System Prompt ------
     const finalSystemPrompt = formatPrompt2(
       systemPromptTemplate,
@@ -448,9 +472,9 @@ export async function POST(request: NextRequest) {
       USER_PROMPT,
       {
         instructions: body.instructions,
-        sources: body.sources,
         stepOutputs: body.articleStepOutputs,
-        initialSources: body.sources,
+        sources: body.sources,
+        keyPointInstructions: keyPointInstructions,
       },
       PromptType.USER
     );
@@ -459,7 +483,7 @@ export async function POST(request: NextRequest) {
     const finalAssistantPrompt = formatPrompt2(ASSISTANT_PROMPT, undefined, PromptType.ASSISTANT);
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step04-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step04-${Date.now()}`, 'aggregate');
     logger.logStepPrompts(4, "Write Article Outline", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach

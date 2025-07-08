@@ -90,6 +90,7 @@ export async function createNewVersionAction(currentArticle: Article, updates: P
         orgId: user.orgId.toString(),
         currentVersion: currentArticle.version, // This will increment to currentVersion + 1
       },
+      sourceType: currentArticle.sourceType,
       slug: currentArticle.slug,
       headline: updates.headline || currentArticle.headline || "",
       sources: extractSourcesFromArticle(currentArticle),

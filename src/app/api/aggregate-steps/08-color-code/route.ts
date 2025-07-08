@@ -34,6 +34,8 @@ const MAX_TOKENS = 3000;
 // System Prompts
 // ==========================================================================
 
+// Original color coding system prompt (commented out)
+/*
 const SYSTEM_PROMPT = `
 <instructions>
 Take the given article and reprint it word for word, but color coded. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). Each line in the input should be appropriately color coded based on the corresponding source article from the source list. The purpose is just to color code the existing article based on the source article tags with no other changes.
@@ -88,11 +90,57 @@ EXAMPLE OUTPUT WITH EVERY SENTENCE OF THE ARTICLE COLOR CODED AND ON A NEW LINE:
 
 NOTE: Wrap each sentence in the corresponding paragraph tags, but keep items within a direct quote together as indicated by the example.
 `;
+*/
+
+// New system prompt without color coding
+const SYSTEM_PROMPT = `
+<instructions>
+Take the given article and reprint it word for word. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). The purpose is to format the existing article while removing all source article tags and preserving content with no other changes.
+
+Remove all source tags (like "(Source 1)", "(Source 2)", etc.) from the text completely.
+
+NOTE: If a line has credit IN THE TEXT (eg "according to NumeNews") preserve that attribution exactly as written, but remove the source tags.
+If a line has multiple source tags, remove them all. Do not edit the in-sentence attribution but remove all source tags.
+
+###
+OUTPUT FORMAT:
+Insert sentence.
+Insert sentence "with quote"
+Insert sentence.
+</instructions>
+
+EXAMPLE INPUT:
+<rewrite>
+Here is your article:
+Nume announced his return to the world of beatboxing in a video posted to Youtube on Thursday. (Source 1 AP) 
+"I'm back, baby," Nume said after a long-winded speech. "This is a new era for me. I hope it's a newer, better era... and I want to beatbox like never before." (Source 1 AP) (Source 2 CNN)
+Nume holds several titles, including the 2019 American Championship title in looping. (Source 2 CNN)
+This is his second retirement in two years. (Source 1 AP) 
+"I know I've said this before," Nume said, "But I mean it this time. I really do." (Source 4 & Source 6)
+Nume turns 30 in November, according to CNN. (Source 1 AP) (Source 2 CNN)
+</rewrite>
+
+EXAMPLE OUTPUT WITH EVERY SENTENCE ON NEW LINES AND SOURCE TAGS REMOVED:
+<final-draft>
+Nume announced his return to the world of beatboxing in a video posted to Youtube on Thursday.
+"I'm back, baby," Nume said after a long-winded speech.
+"This is a new era for me. I hope it's a newer, better era... and I want to beatbox like never before."
+Nume holds several titles, including the 2019 American Championship title in looping.
+This is his second retirement in two years.
+"I know I've said this before," Nume said.
+"But I mean it this time. I really do."
+Nume turns 30 in November, according to CNN.
+</final-draft>
+
+NOTE: Keep items within a direct quote together as indicated by the example, but remove all source tags.
+`;
 
 // ==========================================================================
 // User Prompt
 // ==========================================================================
 
+// Original color coding user prompt (commented out)
+/*
 const USER_PROMPT = `
 <instructions>
 Take the given article and reprint it word for word, but color coded. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). Each line in the input should be appropriately color coded based on the source list. Each line should be wrapped in the  "<p>" and "<span> tags with no extra spacing. 
@@ -100,6 +148,19 @@ Take the given article and reprint it word for word, but color coded. Reprint it
 
 <rewrite>
 {{#initialSources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/initialSources.0.useVerbatim}}
+{{stepOutputs.rewriteArticle2.text}}
+</rewrite>
+`;
+*/
+
+// New user prompt without color coding
+const USER_PROMPT = `
+<instructions>
+Take the given article and reprint it word for word. Reprint it with each sentence on a new line (unless the sentence is INSIDE a direct quote). Remove all source tags like "(Source 1)", "(Source 2)", etc. from the text completely. Preserve all other attributions exactly as they appear.
+</instructions>
+
+<rewrite>
+{{#sources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
 {{stepOutputs.rewriteArticle2.text}}
 </rewrite>
 `;
@@ -121,12 +182,9 @@ export async function POST(request: NextRequest) {
     const body: Step08ColorCodeRequest = await request.json();
 
     // Validate required fields ------
-    const validationError = validateRequest(
-      Boolean(body.articleStepOutputs?.rewriteArticle2?.text), 
-      {
-        colorCodedArticle: "",
-      } as Step08ColorCodeAIResponse
-    );
+    const validationError = validateRequest(Boolean(body.articleStepOutputs?.rewriteArticle2?.text), {
+      colorCodedArticle: "",
+    } as Step08ColorCodeAIResponse);
     if (validationError) return validationError;
 
     // Format System Prompt ------
@@ -135,8 +193,9 @@ export async function POST(request: NextRequest) {
     // Format User Prompt ------
     const finalUserPrompt = formatPrompt2(
       USER_PROMPT,
-      { 
-        stepOutputs: body.articleStepOutputs
+      {
+        stepOutputs: body.articleStepOutputs,
+        sources: body.sources,
       },
       PromptType.USER
     );
@@ -145,7 +204,7 @@ export async function POST(request: NextRequest) {
     const finalAssistantPrompt = formatPrompt2(ASSISTANT_PROMPT, undefined, PromptType.ASSISTANT);
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step08-${Date.now()}`);
+    const logger = createPipelineLogger(`route-step08-${Date.now()}`, "aggregate");
     logger.logStepPrompts(8, "Color Code", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
@@ -166,9 +225,14 @@ export async function POST(request: NextRequest) {
       maxTokens: MAX_TOKENS,
     });
 
+    // Clean up the response by removing any <final-draft></final-draft> tags and trimming whitespace
+    const cleanedText = colorCodedArticle
+      .replace(/<\/?final-draft[^>]*>/g, "") // Remove any <final-draft> or </final-draft> tags
+      .trim(); // Remove leading and trailing whitespace
+
     // Build response
     const response: Step08ColorCodeAIResponse = {
-      colorCodedArticle,
+      colorCodedArticle: cleanedText,
     };
 
     logger.logStepResponse(8, "Color Code", response);
