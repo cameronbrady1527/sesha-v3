@@ -152,7 +152,7 @@ Example rewrite:
 Nume has previously argued that the polls don't support a Carlson win in the 2024 election. (Source 1) 
 But in an interview last month, he claimed Carlson is "a lock in." (Source 1) 
 
-3. IMPORTANT: Remove the very last paragraph or sentence if it is "waflle" and pure opinion or summary.
+3. IMPORTANT: Remove the very last paragraph or sentence if it is "waflle" and pure opinion or summary. THIS IS ABSOLUTELY CRITICAL, DO NOT SKIP THIS STEP.
 
 Example input: 
 { imagine a whole article here and then...}...
