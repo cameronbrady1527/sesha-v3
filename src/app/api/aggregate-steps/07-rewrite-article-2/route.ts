@@ -51,7 +51,7 @@ NOTES:
 - Dont add new credits for anything that is marked with a source number but no credit, for example, (Source 1) should not be credited since it doesn't have a credit like "CNN" inside the tag
 - Make sure to keep all existing instances of in-sentence attribution
 {{#sources.0.useVerbatim}}This opening text should remain unaltered, since it was already manually written by the editor: 
-{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
+{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
 
 NOTE: If there are multiple sources in the tags, use the first source listed in the tag. For example, if provided "Blah blah blah (Source 1 CNN, Source 3 NumeNews)" you would add credit as "Blah blah blah, according to CNN. (Source 1 CNN, Source 3 NumeNews)" since that is the first source listed in the source tag. But remember, if the source doesn't have a credit and only has a number it should not be credited.
 
@@ -108,7 +108,7 @@ IMPORTANT: Only add credits for these source articles:
 
 IMPORTANT: ONLY add attribution once per source article, and only one at a time
 <article>
-{{stepOutputs.rewriteArticle.text}}
+{{rewrittenArticle}}
 </article>
 `;
 
@@ -117,7 +117,7 @@ IMPORTANT: ONLY add attribution once per source article, and only one at a time
 // ==========================================================================
 
 const ASSISTANT_PROMPT = `
-<rewrite>{{#sources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
+<rewrite>{{#sources.0.useVerbatim}}{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
 `;
 
 /* ==========================================================================*/
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       SYSTEM_PROMPT,
       { 
         sources: body.sources,
-        stepOutputs: body.articleStepOutputs
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
       },
       PromptType.SYSTEM
     );
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       USER_PROMPT,
       { 
         sources: body.sources,
-        stepOutputs: body.articleStepOutputs
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
       },
       PromptType.USER
     );
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       ASSISTANT_PROMPT,
       { 
         sources: body.sources,
-        stepOutputs: body.articleStepOutputs
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
       },
       PromptType.ASSISTANT
     );

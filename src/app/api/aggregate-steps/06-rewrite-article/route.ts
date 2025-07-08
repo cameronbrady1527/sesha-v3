@@ -105,13 +105,13 @@ NOTE: We own the rights and permissions to reprint this text.
 
 {{#sources.0.useVerbatim}}You MUST begin the article with this exact FULL text with (Source 1 {{sources.0.accredit}}) written after each line: 
 <article-opening>
-{{stepOutputs.factsBitSplitting.0.text}}
+{{sources.0.factsBitSplitting1}}
 </article-opening>
 Note: make sure the sentences after flow seamlessly from the editor-written opening.{{/sources.0.useVerbatim}}
 
 Reprint this article with the requested minor changes: 
-{{#sources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
-{{stepOutputs.writeArticle.text}}
+{{#sources.0.useVerbatim}}{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
+{{article}}
 `;
 
 // ==========================================================================
@@ -138,6 +138,9 @@ export async function POST(request: NextRequest) {
     } as Step06RewriteArticleAIResponse);
     if (validationError) return validationError;
 
+    // Extract article text from step outputs
+    const article = body.articleStepOutputs.writeArticle?.text || "";
+
     // Format System Prompt ------
     const finalSystemPrompt = formatPrompt2(SYSTEM_PROMPT, undefined, PromptType.SYSTEM);
 
@@ -146,7 +149,7 @@ export async function POST(request: NextRequest) {
       USER_PROMPT,
       {
         sources: body.sources,
-        stepOutputs: body.articleStepOutputs,
+        article: article,
       },
       PromptType.USER
     );

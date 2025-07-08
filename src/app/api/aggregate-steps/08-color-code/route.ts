@@ -147,8 +147,8 @@ Take the given article and reprint it word for word, but color coded. Reprint it
 </instructions>
 
 <rewrite>
-{{#initialSources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/initialSources.0.useVerbatim}}
-{{stepOutputs.rewriteArticle2.text}}
+{{#sources.0.useVerbatim}}{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
+{{rewrittenArticle}}
 </rewrite>
 `;
 */
@@ -160,8 +160,8 @@ Take the given article and reprint it word for word. Reprint it with each senten
 </instructions>
 
 <rewrite>
-{{#sources.0.useVerbatim}}{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
-{{stepOutputs.rewriteArticle2.text}}
+{{#sources.0.useVerbatim}}{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
+{{rewrittenArticle}}
 </rewrite>
 `;
 
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     const finalUserPrompt = formatPrompt2(
       USER_PROMPT,
       {
-        stepOutputs: body.articleStepOutputs,
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle2?.text || "",
         sources: body.sources,
       },
       PromptType.USER

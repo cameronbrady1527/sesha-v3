@@ -129,7 +129,7 @@ RULES:
 - In the outline, you MUST reference every one of the source articles (generally move through them by doing a few key points about each source)
 - Do not author your own opinions or analysis, stick to the facts and quotes in the source inputs and weave them together into a cohesive article outline
 
-You must use this exact text of the opening of the article, so indicate as much in the outline (and flow well into the next points): {{stepOutputs.factsBitSplitting.0.text}}
+You must use this exact text of the opening of the article, so indicate as much in the outline (and flow well into the next points): {{sources.0.text}}
 </instructions>
 
 ###
@@ -145,7 +145,8 @@ Here are examples of well structured outlines you've written in the past:
 
 const USER_PROMPT = `
 <instructions>
-{{stepOutputs.headlinesblobs.text}}
+{{headline}}
+{{blobs}}
 You must weave together the sources and write each key point in your own words by combining multiple sources for each key point
 
 Editor Notes:
@@ -190,62 +191,58 @@ NOTE: Some of these articles may include different stories or events, so make su
 {{^sources.0.useVerbatim}}
 Source 1 (aim for about 5 key points about Source 1):
 <source-1-content>
-{{stepOutputs.factsBitSplitting.0.text}}
-{{stepOutputs.factsBitSplitting2.0.text}}{{/sources.0.useVerbatim}}
+{{sources.0.factsBitSplitting1}}{{sources.0.factsBitSplitting2}}
+</source-1-content>
+{{/sources.0.useVerbatim}}
 {{#sources.0.useVerbatim}}
 Source 1 (this exact text will be the opening of the article, so the first few key points should indicate that this exact text is the opening):
-{{stepOutputs.factsBitSplitting.0.text}}{{/sources.0.useVerbatim}}
+{{sources.0.factsBitSplitting1}}{{/sources.0.useVerbatim}}
 </input source article 1>
 
-{{#stepOutputs.factsBitSplitting.1.text}}
+{{#sources.1.factsBitSplitting1}}
 <input source article 2>
 Source 2 (pull about 4 key points about Source 2):
 <source-2-content>
-{{stepOutputs.factsBitSplitting.1.text}}
-{{stepOutputs.factsBitSplitting2.1.text}}
+{{sources.1.factsBitSplitting1}}{{sources.1.factsBitSplitting2}}
 </source-2-content>
 </input source article 2>
-{{/stepOutputs.factsBitSplitting.1.text}}
+{{/sources.1.factsBitSplitting1}}
 
-{{#stepOutputs.factsBitSplitting.2.text}}
+{{#sources.2.factsBitSplitting1}}
 <input source article 3>
 <source-3-content>
 Source 3 (pull about 3 key points about Source 3):
-{{stepOutputs.factsBitSplitting.2.text}}
-{{stepOutputs.factsBitSplitting2.2.text}}
+{{sources.2.factsBitSplitting1}}{{sources.2.factsBitSplitting2}}
 </source-3-content>
 </input source article 3>
-{{/stepOutputs.factsBitSplitting.2.text}}
+{{/sources.2.factsBitSplitting1}}
 
-{{#stepOutputs.factsBitSplitting.3.text}}
+{{#sources.3.factsBitSplitting1}}
 <input source article 4>
 Source 4 (pull about 2 key points about Source 4):
 <source-4-content>
-{{stepOutputs.factsBitSplitting.3.text}}
-{{stepOutputs.factsBitSplitting2.3.text}}
+{{sources.3.factsBitSplitting1}}{{sources.3.factsBitSplitting2}}
 </source-4-content>
 </input source article 4>
-{{/stepOutputs.factsBitSplitting.3.text}}
+{{/sources.3.factsBitSplitting1}}
 
-{{#stepOutputs.factsBitSplitting.4.text}}
+{{#sources.4.factsBitSplitting1}}
 <input source article 5>
 Source 5 (pull about 2 key points about Source 5):
 <source-5-content>
-{{stepOutputs.factsBitSplitting.4.text}}
-{{stepOutputs.factsBitSplitting2.4.text}}
+{{sources.4.factsBitSplitting1}}{{sources.4.factsBitSplitting2}}
 </source-5-content>
 </input source article 5>
-{{/stepOutputs.factsBitSplitting.4.text}}
+{{/sources.4.factsBitSplitting1}}
 
-{{#stepOutputs.factsBitSplitting.5.text}}
+{{#sources.5.factsBitSplitting1}}
 <input source article 6>
 Source 6 (pull about 1-2 key points about Source 6):
 <source-6-content>
-{{stepOutputs.factsBitSplitting.5.text}}
-{{stepOutputs.factsBitSplitting2.5.text}}
+{{sources.5.factsBitSplitting1}}{{sources.5.factsBitSplitting2}}
 </source-6-content>
 </input source article 6>
-{{/stepOutputs.factsBitSplitting.5.text}}
+{{/sources.5.factsBitSplitting1}}
 `;
 
 // ==========================================================================
@@ -457,12 +454,18 @@ export async function POST(request: NextRequest) {
     // Generate key point instructions based on source count
     const keyPointInstructions = getKeyPointInstructions(body.sources.length);
 
+
+    // Format headline and blobs
+    const headline = body.articleStepOutputs.headlinesBlobs?.headline || "";
+    const blobs = body.articleStepOutputs.headlinesBlobs?.blobs.join("\n") || "";
+
     // Format System Prompt ------
     const finalSystemPrompt = formatPrompt2(
       systemPromptTemplate,
       {
         example_outlines: exampleOutlines,
-        stepOutputs: body.articleStepOutputs,
+        headline: headline,
+        blobs: blobs,
       },
       PromptType.SYSTEM
     );
@@ -472,7 +475,8 @@ export async function POST(request: NextRequest) {
       USER_PROMPT,
       {
         instructions: body.instructions,
-        stepOutputs: body.articleStepOutputs,
+        headline: headline,
+        blobs: blobs,
         sources: body.sources,
         keyPointInstructions: keyPointInstructions,
       },
