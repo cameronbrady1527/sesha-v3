@@ -16,6 +16,9 @@ interface SendEmailRequest {
   to: string[];
   subject: string;
   href: string;
+  name: string;
+  slug: string;
+  version: number;
 }
 
 // ==========================================================================
@@ -46,7 +49,7 @@ export async function POST(request: NextRequest) {
       from: 'updates@updates.sesha-systems.com',
       to: body.to,
       subject: body.subject,
-      react: ArticleComplete({ href: body.href }),
+      react: ArticleComplete({ href: body.href, name: body.name, slug: body.slug, version: body.version }),
     });
 
     if (error) {

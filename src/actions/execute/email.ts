@@ -67,8 +67,11 @@ export async function sendCompletionEmail(
       },
       body: JSON.stringify({
         to: [user.email],
-        subject: "Article Complete",
+        subject: `Article Complete: ${slug} version ${version}`,
         href: href,
+        name: user.firstName,
+        slug: slug,
+        version: version,
       }),
     });
 
