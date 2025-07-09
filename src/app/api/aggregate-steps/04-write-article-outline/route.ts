@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
 
 // Local Utilities ---
-import { formatPrompt2, PromptType, validateRequest } from "@/lib/utils";
+import { formatPrompt2, PromptType } from "@/lib/utils";
 import { createPipelineLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
@@ -438,11 +438,11 @@ export async function POST(request: NextRequest) {
   try {
     const body: Step04WriteArticleOutlineRequest = await request.json();
 
-    // Validate required fields ------
-    const validationError = validateRequest(Boolean(body.instructions), {
-      outline: "",
-    } as Step04WriteArticleOutlineAIResponse);
-    if (validationError) return validationError;
+    // // Validate required fields ------
+    // const validationError = validateRequest(Boolean(body.sources) && Boolean(body.articleStepOutputs), {
+    //   outline: "",
+    // } as Step04WriteArticleOutlineAIResponse);
+    // if (validationError) return validationError;
 
     // Determine which system prompt to use based on verbatim flag
     const isVerbatim = body.sources[0]?.useVerbatim || false;
