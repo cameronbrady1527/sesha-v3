@@ -65,8 +65,8 @@ class PipelineLogger {
     
     // Determine if we're in a serverless/production environment where file system access is limited
     // TODO: PUT THIS BACK
-    // const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production'
-    const isServerless = false
+    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production'
+    // const isServerless = false
 
     // Configure transports based on environment
     const transports: winston.transport[] = [
