@@ -14,6 +14,9 @@
 import React, { useTransition } from "react";
 import Link from "next/link";
 
+// Next.js ---
+import { useRouter } from "next/navigation";
+
 // Shadcn UI ---
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -25,18 +28,28 @@ import { FileText, Download, Mail, Loader2, ArrowLeft } from "lucide-react";
 // Local Modules ---
 import { useArticle } from "./article-context";
 import { createNewVersionAction } from "@/actions/article";
+import { set } from "zod";
 
 /* ==========================================================================*/
 // Version Dropdown
 /* ==========================================================================*/
 
 function VersionSelect() {
-  const { versionMetadata, currentVersion, setCurrentVersion } = useArticle();
+  const router = useRouter();
+  const { versionMetadata, currentVersion, setCurrentVersion, currentArticle } = useArticle();
   
+  const handleVersionChange = (value: string) => {
+    const newVersion = Number(value);
+    if (newVersion !== currentVersion && currentArticle) {
+      setCurrentVersion(newVersion);
+      router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${newVersion}`);
+    }
+  }
+
   return (
     <Select 
       value={currentVersion.toString()} 
-      onValueChange={(value) => setCurrentVersion(Number(value))}
+      onValueChange={handleVersionChange}
     >
       <SelectTrigger className="w-fit cursor-pointer">
         <SelectValue />
