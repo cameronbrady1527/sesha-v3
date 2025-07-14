@@ -1,77 +1,159 @@
 // lib/docx.ts
-import { Document, Packer, Paragraph, TextRun, BorderStyle, HeadingLevel } from "docx";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  BorderStyle,
+  HeadingLevel,
+  ShadingType,
+} from "docx";
 
-/**
- * Generate a DocX document from Lexical rich content.
- * This function converts the Lexical JSON structure into a DocX document.
- */
-export async function generateDocx({ headline, richContent, slug, version, createdByName }: {
+export interface ExportOptions {
   headline: string;
   richContent: string;
   slug: string;
   version: string;
-  createdByName: string;
-}): Promise<Uint8Array> {
+  author: string;
+}
+
+export async function generateDocx({
+  headline,
+  richContent,
+  slug,
+  version,
+  author,
+}: ExportOptions): Promise<Uint8Array> {
+  // 1) Parse the Lexical JSON
   const parsed = JSON.parse(richContent);
 
-  // 1. Build metadata header
-  const now = new Date();
-  const metadataText = `Slug: ${slug}  Version: ${version}  Export by: ${createdByName} on : ${now.toLocaleString()}`;
+  // 2) Convert a text node into a TextRun
+  function runsForText(node: any): TextRun {
+    const opts: any = { text: node.text || "" };
+
+    // Inline formatting
+    if (node.format & 1) opts.bold = true;
+    if (node.format & 2) opts.italics = true;
+    if (node.format & 4) opts.underline = true;
+    if (node.format & 8) opts.strike = true;
+
+    // Code span (bit 16)
+    if (node.format & 16) {
+      opts.font = "Courier New";
+      opts.shading = { type: ShadingType.CLEAR, fill: "F3F4F6" };
+    }
+
+    // Color/background from inline style
+    const style: string = node.style || "";
+    const colorMatch = /color:\s*#([0-9A-Fa-f]{6})/.exec(style);
+    if (colorMatch) opts.color = colorMatch[1];
+    const bgMatch = /background-color:\s*#([0-9A-Fa-f]{6})/.exec(style);
+    if (bgMatch) opts.shading = { type: ShadingType.CLEAR, fill: bgMatch[1] };
+
+    return new TextRun(opts);
+  }
+
+  // 3) Build paragraphs recursively
+  function buildParagraphs(nodes: any[]): Paragraph[] {
+    const paras: Paragraph[] = [];
+
+    for (const node of nodes) {
+      switch (node.type) {
+        case "heading": {
+          const tag = node.tag || "h2";
+          const levelMap: Record<string, typeof HeadingLevel[keyof typeof HeadingLevel]> = {
+            h1: HeadingLevel.HEADING_1,
+            h2: HeadingLevel.HEADING_2,
+            h3: HeadingLevel.HEADING_3,
+          };
+          const headingLevel = levelMap[tag] || HeadingLevel.HEADING_2;
+          const runs = (node.children || []).map(runsForText);
+          paras.push(new Paragraph({ children: runs, heading: headingLevel }));
+          break;
+        }
+        case "paragraph": {
+          const runs = (node.children || []).map(runsForText);
+          paras.push(new Paragraph({ children: runs }));
+          break;
+        }
+        case "quote": {
+          const runs = (node.children || []).map(runsForText);
+          paras.push(
+            new Paragraph({
+              children: runs,
+              border: {
+                left: { style: BorderStyle.SINGLE, size: 2, color: "BFBFBF" },
+              },
+              indent: { left: 200 },
+            })
+          );
+          break;
+        }
+        case "list": {
+          const items = node.children || [];
+          if (node.listType === "check") {
+            for (const item of items) {
+              const runs = (item.children || []).map(runsForText);
+              const checkbox = item.checked ? "☑ " : "☐ ";
+              paras.push(
+                new Paragraph({
+                  children: [new TextRun({ text: checkbox }), ...runs],
+                })
+              );
+            }
+          } else if (node.listType === "number") {
+            for (const item of items) {
+              const runs = (item.children || []).map(runsForText);
+              const prefix = `${item.value ?? 1}. `;
+              paras.push(
+                new Paragraph({
+                  children: [new TextRun({ text: prefix }), ...runs],
+                })
+              );
+            }
+          } else {
+            for (const item of items) {
+              const runs = (item.children || []).map(runsForText);
+              paras.push(new Paragraph({ children: runs, bullet: { level: 0 } }));
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    return paras;
+  }
+
+  // 4) Metadata header, horizontal rule, title, and body
+  const now = new Date().toLocaleString();
+  const metaText = `Slug: ${slug}  Version: ${version}  Export by: ${author} on ${now}`;
   const metaParagraph = new Paragraph({
-    children: [ new TextRun({ text: metadataText, italics: true }) ],
-    spacing: { after: 200 }
+    children: [new TextRun({ text: metaText, italics: true })],
+    spacing: { after: 200 },
   });
 
-  // 2. Horizontal rule with spacing
   const hrParagraph = new Paragraph({
-    border: {
-        bottom: { style: BorderStyle.SINGLE, size: 6, color: "auto" }
-    },
-    spacing: { before: 100, after: 100 }
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "auto" } },
+    spacing: { before: 100, after: 100 },
   });
 
-  // 3. Title with extra space below
   const titleParagraph = new Paragraph({
     text: headline,
     heading: HeadingLevel.HEADING_1,
-    spacing: { before: 200, after: 300 }
+    spacing: { before: 200, after: 300 },
   });
 
-  function traverse(node: any): Paragraph[] {
-    if (node.type === "root") {
-      return node.children.flatMap(traverse);
-    }
-    if (node.type === "heading") {
-      const text = node.children.map((c: any) => c.text).join("");
-      return [
-        new Paragraph({ text, heading: HeadingLevel.HEADING_2 }),
-      ];
-    }
-    if (node.type === "paragraph") {
-      const runs = node.children.map((child: any) =>
-        new TextRun({
-          text: child.text || "",
-          bold: !!(child.format & 1),
-          italics: !!(child.format & 2),
-          underline: (child.format & 4) ? { type: "single" } : undefined,
-        })
-      );
-      return [new Paragraph({ children: runs })];
-    }
-    return [];
-  }
+  const bodyParagraphs = buildParagraphs(parsed.root.children || []);
 
-  const bodyParagraphs = traverse({ type: "root", children: parsed.root.children });
+  // 5) Assemble and pack
   const doc = new Document({
-    sections: [{
+    sections: [
+      {
         properties: {},
-        children: [
-          metaParagraph,
-          hrParagraph,
-          titleParagraph,
-          ...bodyParagraphs
-        ]
-    }]
+        children: [metaParagraph, hrParagraph, titleParagraph, ...bodyParagraphs],
+      },
+    ],
   });
 
   const buffer = await Packer.toBuffer(doc);
