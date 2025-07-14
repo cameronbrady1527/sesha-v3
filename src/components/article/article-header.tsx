@@ -11,7 +11,7 @@
 /* ==========================================================================*/
 
 // React core ---
-import React, { useTransition } from "react";
+import React, { useTransition, useState } from "react";
 import Link from "next/link";
 
 // Next.js ---
@@ -28,6 +28,7 @@ import { FileText, Download, Mail, Loader2, ArrowLeft } from "lucide-react";
 // Local Modules ---
 import { useArticle } from "./article-context";
 import { createNewVersionAction } from "@/actions/article";
+import { handleExportAction, ExportType } from "@/actions/export";
 import { set } from "zod";
 
 /* ==========================================================================*/
@@ -78,6 +79,7 @@ function VersionSelect() {
 function ArticleHeader() {
   const { slug, headline, lastModified, createdByName, currentArticle, setCurrentVersion, hasChanges } = useArticle();
   const [isPending, startTransition] = useTransition();
+  const [isExporting, setIsExporting] = useState(false);
   
   const formattedDate = lastModified?.toLocaleDateString("en-US", {
     month: "long",
@@ -115,6 +117,7 @@ function ArticleHeader() {
           headline: currentArticle.headline,
           blob: currentArticle.blob,
           content: currentArticle.content,
+          richContent: currentArticle.richContent ?? "",
           status: "completed" as const
         };
         
@@ -130,7 +133,6 @@ function ArticleHeader() {
         if (result.success) {
           setCurrentVersion(result.article?.version ?? currentArticle.version + 1);
           toast.success("New version created successfully");
-          // No need to handle success further since the action redirects
         } else {
           console.log(result.error);
           toast.error("Failed to create new version");
@@ -140,6 +142,61 @@ function ArticleHeader() {
         toast.error("An unexpected error occurred");
       }
     });
+  };
+
+  const handleExport = async (exportType: ExportType) => {
+    if (!currentArticle) {
+      toast.error("No article to export");
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      console.log(`📤 Exporting as ${exportType}`);
+
+      if (currentArticle.headline && currentArticle.richContent && (exportType === "docx" || exportType === "pdf")) {
+        // Call server action for docx/pdf
+        const result = await handleExportAction({
+          headline: currentArticle.headline,
+          richContent: currentArticle.richContent,
+          slug: currentArticle.slug,
+          version: currentArticle.version.toString(),
+          createdByName: currentArticle.createdByName,
+          type: exportType
+        });
+
+        if (result.success && result.data && result.filename) {
+          // Create blob and download
+          const blob = new Blob([result.data], {
+            type: exportType === "docx"
+              ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              : "application/pdf"
+          });
+
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = result.filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+
+          toast.success(`Article exported as ${exportType.toUpperCase()} successfully`);
+        } else {
+          toast.error(result.error || `Failed to export as ${exportType}`);
+        }
+      } else if (exportType === "email") {
+        // Handle email export separately or show a message
+        toast.info("Email export is not supported yet.");
+      }
+    } catch (error) {
+      console.error("❌ Export error:", error);
+      toast.error("Export failed");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -177,18 +234,38 @@ function ArticleHeader() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="cursor-pointer">Export</Button>
+              <Button variant="outline" className="cursor-pointer" disabled={isExporting}>
+                {isExporting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  "Export"
+                )}
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
-              <DropdownMenuItem className="cursor-pointer" onClick={() => console.log("Export as DocX")}>
+              <DropdownMenuItem 
+                className="cursor-pointer" 
+                onClick={() => handleExport("docx")}
+                disabled={isExporting}
+              >
                 <FileText className="mr-2 h-4 w-4" />
                 Export as DocX
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer" onClick={() => console.log("Export as PDF")}>
+              <DropdownMenuItem 
+                className="cursor-pointer" 
+                onClick={() => handleExport("pdf")}
+                disabled={isExporting}
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Export as PDF
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer" onClick={() => console.log("Export as Email")}>
+              <DropdownMenuItem 
+                className="cursor-pointer" 
+                onClick={() => console.log("Email export not implemented yet")}
+              >
                 <Mail className="mr-2 h-4 w-4" />
                 Export as Email
               </DropdownMenuItem>
