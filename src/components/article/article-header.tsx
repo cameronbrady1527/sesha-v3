@@ -246,6 +246,7 @@ function ArticleHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
+              {/* To be implemented later... */}
               {/* <DropdownMenuItem 
                 className="cursor-pointer" 
                 onClick={() => handleExport("docx")}
@@ -262,13 +263,14 @@ function ArticleHeader() {
                 <Download className="mr-2 h-4 w-4" />
                 Export as PDF
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              {/* To be implemented later... */}
+              {/* <DropdownMenuItem 
                 className="cursor-pointer" 
                 onClick={() => console.log("Email export not implemented yet")}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 Export as Email
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
