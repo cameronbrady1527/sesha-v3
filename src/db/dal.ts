@@ -525,7 +525,7 @@ export async function createArticleRecord(payload: {
  * @param blobs - Generated blobs from step 3
  * @param formattedArticle - Final formatted article from step 7
  */
-export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string): Promise<void> {
+export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string, richContent?: string): Promise<void> {
   await db
     .update(articles)
     .set({

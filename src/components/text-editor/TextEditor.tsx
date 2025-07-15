@@ -100,10 +100,27 @@ function ContentUpdatePlugin({ content }: { content?: string }) {
           root.clear();
           
           if (content.trim()) {
-            const paragraph = $createParagraphNode();
-            const textNode = $createTextNode(content);
-            paragraph.append(textNode);
-            root.append(paragraph);
+            // Parse HTML from content
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, "text/html");
+
+            doc.querySelectorAll("p").forEach((p) => {
+              const paragraphNode = $createParagraphNode();
+
+              p.querySelectorAll("span").forEach((span) => {
+                const color = span.style.color;
+                const text = span.textContent ?? "";
+
+                const textNode = $createTextNode(text);
+
+                // Apply color as a style
+                textNode.setStyle(`color: ${color}`);
+
+                paragraphNode.append(textNode);
+              });
+
+              root.append(paragraphNode);
+            });
           }
         }
       });
@@ -182,12 +199,14 @@ function EditorPlugins({
   placeholder, 
   expanded, 
   onExpandToggle,
+  content
 }: { 
   onChange?: (content: string) => void; 
   onRichTextChange?: (editorState: SerializedEditorState) => void;
   placeholder?: string; 
   expanded: boolean;
   onExpandToggle: () => void;
+  content?: string;
 }) {
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
 
@@ -253,6 +272,7 @@ function EditorPlugins({
         {floatingAnchorElem && (
           <FloatingTextFormatToolbarPlugin anchorElem={floatingAnchorElem} />
         )}
+        <ContentUpdatePlugin content={content} />
       </div>
     </div>
   );
@@ -307,6 +327,7 @@ function TextEditorInner({
         placeholder={placeholder} 
         expanded={expanded} 
         onExpandToggle={onExpandToggle} 
+        content={content}
       />
     </ToolbarContext>
   );
@@ -380,7 +401,8 @@ function TextEditor({
             onRichTextChange={onRichTextChange}
             placeholder={placeholder} 
             expanded={expanded} 
-            onExpandToggle={handleExpandToggle} 
+            onExpandToggle={handleExpandToggle}
+            content={content}
           />
         </TooltipProvider>
       </LexicalComposer>
