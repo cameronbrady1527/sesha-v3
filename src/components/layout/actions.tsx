@@ -8,7 +8,7 @@
 import * as React from "react";
 
 // Lucide Icons ---
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { ChevronsUpDown, LogOut, UserPlus } from "lucide-react";
 
 // Shadcn UI ---
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -54,6 +54,14 @@ export function NavigationActions({ user }: NavigationActionsProps) {
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg" align="start" side={isMobile ? "bottom" : "bottom"} sideOffset={4}>
+            {user.role === 'admin' && (
+              <DropdownMenuItem className="gap-2 p-2" onClick={() => window.location.href = `/register?orgId=${user.orgId}`}>
+                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                  <UserPlus className="size-4" />
+                </div>
+                <div className="text-muted-foreground font-medium">Organization Invite</div>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem className="gap-2 p-2" onClick={() => logout()}>
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                 <LogOut className="size-4" />

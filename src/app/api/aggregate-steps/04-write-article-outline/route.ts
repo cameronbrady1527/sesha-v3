@@ -249,10 +249,10 @@ Source 6 (pull about 1-2 key points about Source 6):
 // Assistant Prompt
 // ==========================================================================
 
-const ASSISTANT_PROMPT = `Here is the article outline organized by key points that weave together the source content:
+const ASSISTANT_PROMPT = `Here is the outline that intersperses/weaves together the facts and details and direct quotes from the sources to craft the story in a clear, logical order. The lede is the same angle as the headline. All of the facts and quotes are thoroughly rooted in the source material and 100% accurate.
 
 <outline>
-KEY POINTS IN ORDER:`;
+`;
 
 /* ==========================================================================*/
 // Helper Functions
@@ -469,6 +469,8 @@ export async function POST(request: NextRequest) {
       },
       PromptType.SYSTEM
     );
+
+    console.log("the number of sources is", body.sources.length);
 
     // Format User Prompt ------
     const finalUserPrompt = formatPrompt2(

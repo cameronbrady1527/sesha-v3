@@ -99,12 +99,12 @@ const USER_PROMPT = `
 NOTE: Do not add any attribution or credits if the source tag just has a number (eg "Source 7" should not be credited anywhere, but "Source 7 NewsCo" would be credited as "NewsCo")
 
 IMPORTANT: Only add credits for these source articles:
-{{#sources.0.accredit}}{{sources.0.accredit}}{{/sources.0.accredit}}
-{{#sources.1.accredit}}{{sources.1.accredit}}{{/sources.1.accredit}}
-{{#sources.2.accredit}}{{sources.2.accredit}}{{/sources.2.accredit}}
-{{#sources.3.accredit}}{{sources.3.accredit}}{{/sources.3.accredit}}
-{{#sources.4.accredit}}{{sources.4.accredit}}{{/sources.4.accredit}}
-{{#sources.5.accredit}}{{sources.5.accredit}}{{/sources.5.accredit}}
+{{#sources.0.accredit}}Source 1 Credit: {{sources.0.accredit}}{{/sources.0.accredit}}
+{{#sources.1.accredit}}Source 2 Credit: {{sources.1.accredit}}{{/sources.1.accredit}}
+{{#sources.2.accredit}}Source 3 Credit: {{sources.2.accredit}}{{/sources.2.accredit}}
+{{#sources.3.accredit}}Source 4 Credit: {{sources.3.accredit}}{{/sources.3.accredit}}
+{{#sources.4.accredit}}Source 5 Credit: {{sources.4.accredit}}{{/sources.4.accredit}}
+{{#sources.5.accredit}}Source 6 Credit: {{sources.5.accredit}}{{/sources.5.accredit}}
 
 IMPORTANT: ONLY add attribution once per source article, and only one at a time
 <article>

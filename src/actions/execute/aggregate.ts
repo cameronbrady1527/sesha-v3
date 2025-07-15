@@ -808,6 +808,7 @@ async function step08ColorCode(
       stepNumber: 8,
       success: true,
       colorCodedArticle: aiResult.colorCodedArticle,
+      richContent: aiResult.richContent,
     };
 
     // Log step completion
@@ -829,6 +830,7 @@ async function step08ColorCode(
       stepNumber: 8,
       success: false,
       colorCodedArticle: "",
+      richContent: "",
     };
   }
 }
