@@ -7,7 +7,6 @@ import {
   BorderStyle,
   HeadingLevel,
   ShadingType,
-  AlignmentType,
 } from "docx";
 
 export interface ExportOptions {

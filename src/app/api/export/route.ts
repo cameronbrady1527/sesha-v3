@@ -20,17 +20,18 @@ export async function POST(req: NextRequest) {
     let mime: string;
     let ext: string;
 
+    const date = new Date().toLocaleString();
+    const html = convertRichContentToHTML(richContent, {
+      slug, version, createdByName, date, headline
+    })
+
     if (type === "pdf") {
-      const date = new Date().toLocaleString();
-      const html = convertRichContentToHTML(richContent, {
-        slug, version, createdByName, date, headline
-      });
       buffer = await generatePDFBuffer(html);
 
       mime = "application/pdf";
       ext = "pdf";
     } else if (type === "docx") {
-      buffer = await generateDocx({ headline, richContent, slug, version, createdByName });
+      buffer = await generateDocx({ headline, richContent, slug, version, author: createdByName });
       
       mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
       ext = "docx";

@@ -1,11 +1,28 @@
 // lib/pdf.ts
-import puppeteer from "puppeteer";
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer';
+import puppeteerCore from 'puppeteer-core';
 
 /**
  * Generate PDF from HTML string
  */
 export async function generatePDFBuffer(html: string): Promise<Uint8Array> {
-  const browser = await puppeteer.launch({ headless: true });
+  const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production';
+  
+  let browser;
+
+  if (isServerless) {
+    browser = await puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true
+    });
+  } else {
+    browser = await puppeteer.launch({
+      headless: true
+    });
+  }
+
   const page = await browser.newPage();
   await page.setContent(html, { waitUntil: "networkidle0" });
 

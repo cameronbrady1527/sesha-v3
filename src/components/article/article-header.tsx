@@ -145,6 +145,8 @@ function ArticleHeader() {
   };
 
   const handleExport = async (exportType: ExportType) => {
+    console.log('in export');
+    
     if (!currentArticle) {
       toast.error("No article to export");
       return;
@@ -247,14 +249,14 @@ function ArticleHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
               {/* To be implemented later... */}
-              {/* <DropdownMenuItem 
+              <DropdownMenuItem 
                 className="cursor-pointer" 
                 onClick={() => handleExport("docx")}
                 disabled={isExporting}
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Export as DocX
-              </DropdownMenuItem> */}
+              </DropdownMenuItem>
               <DropdownMenuItem 
                 className="cursor-pointer" 
                 onClick={() => handleExport("pdf")}
