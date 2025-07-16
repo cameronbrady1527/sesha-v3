@@ -21,6 +21,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 // Lucide Icons ---
 import { FileText, Download, Mail, Loader2, ArrowLeft } from "lucide-react";
@@ -28,7 +32,13 @@ import { FileText, Download, Mail, Loader2, ArrowLeft } from "lucide-react";
 // Local Modules ---
 import { useArticle } from "./article-context";
 import { createHumanEditedVersionAction } from "@/actions/article";
-import { handleExportAction, ExportType } from "@/actions/export";
+import { 
+  sendArticleEmail, 
+  exportArticleAsDocx, 
+  exportArticleAsPdf,
+  type ArticleData 
+} from "@/lib/export-utils";
+import { ExportType } from "@/actions/export";
 
 /* ==========================================================================*/
 // Version Dropdown
@@ -37,19 +47,16 @@ import { handleExportAction, ExportType } from "@/actions/export";
 function VersionSelect() {
   const router = useRouter();
   const { versionMetadata, currentVersion, setCurrentVersion, currentArticle } = useArticle();
-  
+
   const handleVersionChange = (value: string) => {
     if (value !== currentVersion && currentArticle) {
       setCurrentVersion(value);
       router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${encodeURIComponent(value)}`);
     }
-  }
+  };
 
   return (
-    <Select 
-      value={currentVersion} 
-      onValueChange={handleVersionChange}
-    >
+    <Select value={currentVersion} onValueChange={handleVersionChange}>
       <SelectTrigger className="w-fit cursor-pointer">
         <SelectValue />
       </SelectTrigger>
@@ -61,6 +68,144 @@ function VersionSelect() {
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+/* ==========================================================================*/
+// Email Export Dialog
+/* ==========================================================================*/
+
+function EmailExportDialog() {
+  const { currentArticle } = useArticle();
+  const [isOpen, setIsOpen] = useState(false);
+  const [recipients, setRecipients] = useState("");
+  const [content, setContent] = useState("");
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!currentArticle) {
+      toast.error("No article to send");
+      return;
+    }
+
+    if (!recipients.trim()) {
+      toast.error("Please enter at least one recipient email address");
+      return;
+    }
+
+    // Parse recipient emails (comma-separated)
+    const emailList = recipients
+      .split(",")
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+
+    if (emailList.length === 0) {
+      toast.error("Please enter valid email addresses");
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      // Convert article data to the format expected by export utils
+      const articleData: ArticleData = {
+        headline: currentArticle.headline || "",
+        slug: currentArticle.slug,
+        version: currentArticle.version,
+        versionDecimal: currentArticle.versionDecimal,
+        richContent: currentArticle.richContent,
+        content: currentArticle.content,
+        blob: currentArticle.blob,
+        createdByName: currentArticle.createdByName,
+      };
+
+      console.log("📧 Sending email...");
+
+      await sendArticleEmail(articleData, emailList, content.trim());
+
+      console.log("📧 Email sent successfully");
+
+      toast.success("Email sent successfully!");
+      setIsOpen(false);
+      setRecipients("");
+      setContent("");
+    } catch (error) {
+      console.error("❌ Email sending error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to send email");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <DropdownMenuItem 
+          className="cursor-pointer" 
+          onSelect={(e) => {
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+        >
+          <Mail className="mr-2 h-4 w-4" />
+          Send as Email
+        </DropdownMenuItem>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Send article as email</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="recipients">Recipient(s) email address:</Label>
+            <Input
+              id="recipients"
+              placeholder="Recipient(s) Email Address *"
+              value={recipients}
+              onChange={(e) => setRecipients(e.target.value)}
+              disabled={isSending}
+            />
+            <p className="text-sm text-muted-foreground">Separate multiple emails with a comma</p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="content">Your Content:</Label>
+            <Textarea
+              id="content"
+              placeholder="This will be added in the email before the article"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              disabled={isSending}
+              rows={4}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsOpen(false)}
+            disabled={isSending}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSendEmail}
+            disabled={isSending}
+          >
+            {isSending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              "Send"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -79,14 +224,15 @@ function ArticleHeader() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
-  
-  const formattedDate = lastModified?.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric", 
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }) || 'Unknown';
+
+  const formattedDate =
+    lastModified?.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }) || "Unknown";
 
   /* ==========================================================================*/
   // Event Handlers
@@ -107,7 +253,7 @@ function ArticleHeader() {
       articleId: currentArticle.id,
       headline: currentArticle.headline,
       blob: currentArticle.blob,
-      hasChanges
+      hasChanges,
     });
 
     startTransition(async () => {
@@ -117,14 +263,14 @@ function ArticleHeader() {
           blob: currentArticle.blob,
           content: currentArticle.content,
           richContent: currentArticle.richContent ?? "",
-          status: "completed" as const
+          status: "completed" as const,
         };
-        
+
         console.log("📤 Calling createHumanEditedVersionAction with:", {
           currentArticle,
-          updateData
+          updateData,
         });
-        
+
         const result = await createHumanEditedVersionAction(currentArticle, updateData);
 
         console.log("📥 Server action result:", result);
@@ -157,45 +303,29 @@ function ArticleHeader() {
     try {
       console.log(`📤 Exporting as ${exportType}`);
 
-      if (currentArticle.headline && currentArticle.richContent && (exportType === "docx" || exportType === "pdf")) {
-        // Call server action for docx/pdf
-        const result = await handleExportAction({
-          headline: currentArticle.headline,
-          richContent: currentArticle.richContent,
-          slug: currentArticle.slug,
-          version: currentArticle.version.toString(),
-          createdByName: currentArticle.createdByName,
-          type: exportType
-        });
+      // Convert article data to the format expected by export utils
+      const articleData: ArticleData = {
+        headline: currentArticle.headline || "",
+        slug: currentArticle.slug,
+        version: currentArticle.version,
+        versionDecimal: currentArticle.versionDecimal,
+        richContent: currentArticle.richContent,
+        content: currentArticle.content,
+        blob: currentArticle.blob,
+        createdByName: currentArticle.createdByName,
+      };
 
-        if (result.success && result.data && result.filename) {
-          // Create blob and download
-          const blob = new Blob([result.data], {
-            type: exportType === "docx"
-              ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              : "application/pdf"
-          });
+      if (exportType === "docx") {
+        await exportArticleAsDocx(articleData);
+        toast.success("Article exported as DOCX successfully");
 
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = result.filename;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-
-          toast.success(`Article exported as ${exportType.toUpperCase()} successfully`);
-        } else {
-          toast.error(result.error || `Failed to export as ${exportType}`);
-        }
-      } else if (exportType === "email") {
-        // Handle email export separately or show a message
-        toast.info("Email export is not supported yet.");
+      } else if (exportType === "pdf") {
+        await exportArticleAsPdf(articleData);
+        toast.success("Article exported as PDF successfully");
       }
     } catch (error) {
       console.error("❌ Export error:", error);
-      toast.error("Export failed");
+      toast.error(error instanceof Error ? error.message : "Export failed");
     } finally {
       setIsExporting(false);
     }
@@ -219,11 +349,7 @@ function ArticleHeader() {
         {/* Start of Right Section --- */}
         <div className="flex items-center space-x-3">
           <VersionSelect />
-          <Button 
-            className="bg-blue-500 hover:bg-blue-600 cursor-pointer text-white"
-            onClick={handleSave}
-            disabled={isPending || !hasChanges}
-          >
+          <Button className="bg-blue-500 hover:bg-blue-600 cursor-pointer text-white" onClick={handleSave} disabled={isPending || !hasChanges}>
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -236,7 +362,7 @@ function ArticleHeader() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              {/* <Button variant="outline" className="cursor-pointer" disabled={isExporting}>
+              <Button variant="outline" className="cursor-pointer" disabled={isExporting}>
                 {isExporting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -245,32 +371,18 @@ function ArticleHeader() {
                 ) : (
                   "Export"
                 )}
-              </Button> */}
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
-              <DropdownMenuItem 
-                className="cursor-pointer" 
-                onClick={() => handleExport("docx")}
-                disabled={isExporting}
-              >
+              <DropdownMenuItem className="cursor-pointer" onClick={() => handleExport("docx")} disabled={isExporting}>
                 <FileText className="mr-2 h-4 w-4" />
                 Export as DocX
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                className="cursor-pointer" 
-                onClick={() => handleExport("pdf")}
-                disabled={isExporting}
-              >
+              <DropdownMenuItem className="cursor-pointer" onClick={() => handleExport("pdf")} disabled={isExporting}>
                 <Download className="mr-2 h-4 w-4" />
                 Export as PDF
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                className="cursor-pointer" 
-                onClick={() => console.log("Email export not implemented yet")}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Export as Email
-              </DropdownMenuItem>
+              <EmailExportDialog />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -281,9 +393,7 @@ function ArticleHeader() {
       {/* Start of Article Info Section --- */}
       <div className="space-y-2 pt-3">
         {/* Start of Headline Row --- */}
-        <h1 className="text-[24px] line-clamp-2 font-semibold leading-wide">
-          {headline}
-        </h1>
+        <h1 className="text-[24px] line-clamp-2 font-semibold leading-wide">{headline}</h1>
         {/* End of Headline Row ---- */}
 
         {/* Start of Metadata Row --- */}
