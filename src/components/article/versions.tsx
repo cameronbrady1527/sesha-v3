@@ -31,7 +31,7 @@ import { Separator } from "@/components/ui/separator";
 /* ==========================================================================*/
 
 interface VersionCardProps {
-  version: number;
+  versionDecimal: string; // primary decimal version 
   headline: string | null;
   blobOutline: string;
   createdAt: Date;
@@ -110,7 +110,7 @@ function VersionTooltip({ headline, blobOutline, children }: VersionTooltipProps
  * Displays individual version information with version number, headline, and timestamp.
  * Shows active state for current version and handles click to switch versions.
  */
-function VersionCard({ version, headline, blobOutline, createdAt, isActive, onClick }: VersionCardProps) {
+function VersionCard({ versionDecimal, headline, blobOutline, createdAt, isActive, onClick }: VersionCardProps) {
   const formattedDate = createdAt.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -123,7 +123,7 @@ function VersionCard({ version, headline, blobOutline, createdAt, isActive, onCl
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className={`text-xs font-medium px-2 py-1 rounded ${isActive ? "text-primary-foreground bg-primary" : "text-primary bg-primary/10"}`}>v{version}</span>
+              <span className={`text-xs font-medium px-2 py-1 rounded ${isActive ? "text-primary-foreground bg-primary" : "text-primary bg-primary/10"}`}>v{versionDecimal}</span>
             </div>
             <div className="text-xs text-muted-foreground">{formattedDate}</div>
           </div>
@@ -161,7 +161,7 @@ function Versions() {
           <Label className="text-sm font-medium">Version History</Label>
 
           <Button asChild className="w-full bg-blue-500 hover:bg-blue-600 cursor-pointer text-white">
-            <Link href={currentArticle ? `/${sourceType}?slug=${currentArticle.slug}&version=${currentVersion}` : `/${sourceType}`}>
+            <Link href={currentArticle ? `/${sourceType}?slug=${currentArticle.slug}&version=${encodeURIComponent(currentVersion)}` : `/${sourceType}`}>
               <span className="font-medium">CHANGE INPUTS</span>
             </Link>
           </Button>
@@ -172,18 +172,21 @@ function Versions() {
         <div className="space-y-3 pt-2">
           {versionMetadata.map((versionData) => (
             <VersionCard
-              key={versionData.version}
-              version={versionData.version}
+              key={versionData.versionDecimal}
+              versionDecimal={versionData.versionDecimal}
               headline={versionData.headline}
               blobOutline={versionData.blobOutline || ""}
               createdAt={versionData.createdAt}
-              isActive={versionData.version === currentVersion}
+              isActive={versionData.versionDecimal === currentVersion}
               onClick={() => {
                 // Only navigate if we're switching to a different version
-                if (versionData.version !== currentVersion && currentArticle) {
-                  router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${versionData.version}`);
+                if (versionData.versionDecimal !== currentVersion && currentArticle) {
+                  // Use enhanced setCurrentVersion for immediate update + loading
+                  setCurrentVersion(versionData.versionDecimal);
+                  
+                  // Update URL for consistency (won't trigger loading since version already matches)
+                  router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${encodeURIComponent(versionData.versionDecimal)}`);
                 }
-                setCurrentVersion(versionData.version);
               }}
             />
           ))}

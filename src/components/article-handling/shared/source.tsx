@@ -57,6 +57,7 @@ function SourceInput({ sourceIndex }: SourceInputProps) {
   const source = sources[sourceIndex];
   const canRemoveSource = mode === "multi" && sources.length > 1;
 
+
   if (!source) return null;
 
   /* ---------------------------- handlers -------------------------------- */

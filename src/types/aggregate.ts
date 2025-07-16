@@ -21,6 +21,7 @@ export interface AggregateRequestMetadata {
   userId: string;
   orgId: string;
   currentVersion: number | null; // null if creating new article, number if creating new version
+  currentVersionDecimal: string | null; // null if creating new article, string if creating new version
 }
 
 /** Complete aggregate request with all required data */
@@ -55,6 +56,7 @@ export interface Source {
   number: number;
   accredit: string;
   text: string;
+  url: string;
   useVerbatim: boolean;
   isPrimarySource: boolean;
   isBaseSource: boolean;

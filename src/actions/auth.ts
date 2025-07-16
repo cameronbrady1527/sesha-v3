@@ -78,7 +78,6 @@ export async function signup(
     orgId: formData.get("orgId") as string,
   };
 
-  console.log("🚀 rawData:", rawData);
 
   // Validate the input data
   const validationResult = signupSchema.safeParse(rawData);

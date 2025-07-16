@@ -387,9 +387,13 @@ function TextEditor({
   }
   // If no content provided, let Lexical use its default empty state
 
+  // Create a stable key that only changes for initial content, not runtime updates
+  const editorKey = initialContent ? 'with-initial-content' : 'empty-initial';
+
   return (
     <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm">
       <LexicalComposer
+        key={editorKey}
         initialConfig={{
           ...editorConfig,
           editorState: editorInitialValue,

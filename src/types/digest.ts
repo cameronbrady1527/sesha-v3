@@ -21,6 +21,7 @@ export interface DigestRequestMetadata {
   userId: string;
   orgId: string;
   currentVersion: number | null; // null if creating new article, number if creating new version
+  currentVersionDecimal: string | null; // null if creating new article, string if creating new version
 }
 
 /** Complete digest request with all required data */
@@ -32,6 +33,7 @@ export interface DigestRequest {
     description: string;
     accredit: string;
     sourceText: string;
+    url: string;
     verbatim: boolean;
     primary: boolean;
   };

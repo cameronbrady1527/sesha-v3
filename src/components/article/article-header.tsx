@@ -27,7 +27,7 @@ import { FileText, Download, Mail, Loader2, ArrowLeft } from "lucide-react";
 
 // Local Modules ---
 import { useArticle } from "./article-context";
-import { createNewVersionAction } from "@/actions/article";
+import { createHumanEditedVersionAction } from "@/actions/article";
 import { handleExportAction, ExportType } from "@/actions/export";
 
 /* ==========================================================================*/
@@ -39,16 +39,15 @@ function VersionSelect() {
   const { versionMetadata, currentVersion, setCurrentVersion, currentArticle } = useArticle();
   
   const handleVersionChange = (value: string) => {
-    const newVersion = Number(value);
-    if (newVersion !== currentVersion && currentArticle) {
-      setCurrentVersion(newVersion);
-      router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${newVersion}`);
+    if (value !== currentVersion && currentArticle) {
+      setCurrentVersion(value);
+      router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${encodeURIComponent(value)}`);
     }
   }
 
   return (
     <Select 
-      value={currentVersion.toString()} 
+      value={currentVersion} 
       onValueChange={handleVersionChange}
     >
       <SelectTrigger className="w-fit cursor-pointer">
@@ -56,8 +55,8 @@ function VersionSelect() {
       </SelectTrigger>
       <SelectContent>
         {versionMetadata.map((version) => (
-          <SelectItem className="cursor-pointer" key={version.version} value={version.version.toString()}>
-            Version {version.version}
+          <SelectItem className="cursor-pointer" key={version.versionDecimal} value={version.versionDecimal}>
+            Version {version.versionDecimal}
           </SelectItem>
         ))}
       </SelectContent>
@@ -77,6 +76,7 @@ function VersionSelect() {
  */
 function ArticleHeader() {
   const { slug, headline, lastModified, createdByName, currentArticle, setCurrentVersion, hasChanges } = useArticle();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
   
@@ -120,21 +120,24 @@ function ArticleHeader() {
           status: "completed" as const
         };
         
-        console.log("📤 Calling createNewVersionAction with:", {
+        console.log("📤 Calling createHumanEditedVersionAction with:", {
           currentArticle,
           updateData
         });
         
-        const result = await createNewVersionAction(currentArticle, updateData);
+        const result = await createHumanEditedVersionAction(currentArticle, updateData);
 
         console.log("📥 Server action result:", result);
 
         if (result.success) {
-          setCurrentVersion(result.article?.version ?? currentArticle.version + 1);
-          toast.success("New version created successfully");
+          const newVersion = result.article?.versionDecimal ?? currentArticle.versionDecimal;
+          setCurrentVersion(newVersion);
+          toast.success("New version saved successfully");
+          // Navigate to the new version URL
+          router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${encodeURIComponent(newVersion)}`);
         } else {
           console.log(result.error);
-          toast.error("Failed to create new version");
+          toast.error("Failed to save edited version");
         }
       } catch (error) {
         console.error("❌ Client error:", error);

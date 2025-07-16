@@ -29,6 +29,7 @@ export interface ArticleMetadata {
   createdAt: Date;
   updatedAt: Date;
   version: number;
+  versionDecimal: string;
   createdByName: string;
   slug: string;
   headline: string | null;
@@ -38,7 +39,8 @@ export interface ArticleMetadata {
 
 /** Sidebar list item for an article version. */
 export interface ArticleVersionMetadata {
-  version: number;
+  version: number; // legacy integer version for backward compatibility
+  versionDecimal: string; // new decimal version (3.00, 3.01, etc.)
   slug: string | null;
   headline: string | null;
   createdAt: Date;
@@ -123,6 +125,7 @@ export async function getArticleMetadata(articleId: string): Promise<ArticleMeta
       createdAt: articles.createdAt,
       updatedAt: articles.updatedAt,
       version: articles.version,
+      versionDecimal: articles.versionDecimal,
       createdByName: sql<string>`
         CASE 
           WHEN ${users.firstName} IS NOT NULL AND ${users.lastName} IS NOT NULL 
@@ -158,6 +161,7 @@ export async function getOrgArticlesMetadataPaginated(orgId: number, limit = 50,
       createdAt: articles.createdAt,
       updatedAt: articles.updatedAt,
       version: articles.version,
+      versionDecimal: articles.versionDecimal,
       createdByName: sql<string>`
         CASE 
           WHEN ${users.firstName} IS NOT NULL AND ${users.lastName} IS NOT NULL 
@@ -200,6 +204,7 @@ export async function getArticleVersionsMetadata(articleId: string): Promise<Art
   return db
     .select({
       version: articles.version,
+      versionDecimal: articles.versionDecimal,
       slug: articles.slug,
       headline: articles.headline,
       createdAt: articles.createdAt,
@@ -207,7 +212,7 @@ export async function getArticleVersionsMetadata(articleId: string): Promise<Art
     })
     .from(articles)
     .where(eq(articles.id, articleId))
-    .orderBy(articles.version);
+    .orderBy(articles.versionDecimal);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -216,19 +221,38 @@ export async function getArticleVersionsMetadata(articleId: string): Promise<Art
 
 /**
  * Fetch an article (with version content) given its org, slug, and version.
- * If `version` is omitted it resolves to the article's currentVersion.
+ * If `version` is omitted it resolves to the latest version.
+ * Supports both integer version (legacy) and decimal version lookup.
  */
-export async function getArticleByOrgSlugVersion(orgId: number, slug: string, version?: number): Promise<Article | null> {
-  // 1) Find the article row first
+export async function getArticleByOrgSlugVersion(
+  orgId: number, 
+  slug: string, 
+  versionDecimal?: string
+): Promise<Article | null> {
+  const whereConditions = [eq(articles.orgId, orgId), eq(articles.slug, slug)];
+  
+  if (versionDecimal) {
+    // Search by decimal version if provided
+    whereConditions.push(eq(articles.versionDecimal, versionDecimal));
+  } else {
+    // If no version specified, get the latest version
+    const [latestArticle] = await db
+      .select()
+      .from(articles)
+             .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug)))
+       .orderBy(desc(articles.versionDecimal))
+      .limit(1);
+    
+    return latestArticle || null;
+  }
+
   const [article] = await db
     .select()
     .from(articles)
-    .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug), eq(articles.version, version ?? 1)))
+    .where(and(...whereConditions))
     .limit(1);
 
-  if (!article) return null;
-
-  return article;
+  return article || null;
 }
 
 /**
@@ -243,6 +267,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       orgId: articles.orgId,
       slug: articles.slug,
       version: articles.version,
+      versionDecimal: articles.versionDecimal,
       headline: articles.headline,
       blob: articles.blob,
       content: articles.content,
@@ -251,6 +276,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
 
       // 1st source
       inputSourceText1: articles.inputSourceText1,
+      inputSourceUrl1: articles.inputSourceUrl1,
       inputSourceDescription1: articles.inputSourceDescription1,
       inputSourceAccredit1: articles.inputSourceAccredit1,
       inputSourceVerbatim1: articles.inputSourceVerbatim1,
@@ -258,6 +284,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       inputSourceBase1: articles.inputSourceBase1,
       // 2nd source
       inputSourceText2: articles.inputSourceText2,
+      inputSourceUrl2: articles.inputSourceUrl2,
       inputSourceDescription2: articles.inputSourceDescription2,
       inputSourceAccredit2: articles.inputSourceAccredit2,
       inputSourceVerbatim2: articles.inputSourceVerbatim2,
@@ -265,6 +292,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       inputSourceBase2: articles.inputSourceBase2,
       // 3rd source
       inputSourceText3: articles.inputSourceText3,
+      inputSourceUrl3: articles.inputSourceUrl3,
       inputSourceDescription3: articles.inputSourceDescription3,
       inputSourceAccredit3: articles.inputSourceAccredit3,
       inputSourceVerbatim3: articles.inputSourceVerbatim3,
@@ -272,6 +300,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       inputSourceBase3: articles.inputSourceBase3,
       // 4th source
       inputSourceText4: articles.inputSourceText4,
+      inputSourceUrl4: articles.inputSourceUrl4,
       inputSourceDescription4: articles.inputSourceDescription4,
       inputSourceAccredit4: articles.inputSourceAccredit4,
       inputSourceVerbatim4: articles.inputSourceVerbatim4,
@@ -279,6 +308,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       inputSourceBase4: articles.inputSourceBase4,
       // 5th source
       inputSourceText5: articles.inputSourceText5,
+      inputSourceUrl5: articles.inputSourceUrl5,
       inputSourceDescription5: articles.inputSourceDescription5,
       inputSourceAccredit5: articles.inputSourceAccredit5,
       inputSourceVerbatim5: articles.inputSourceVerbatim5,
@@ -286,6 +316,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       inputSourceBase5: articles.inputSourceBase5,
       // 6th source
       inputSourceText6: articles.inputSourceText6,
+      inputSourceUrl6: articles.inputSourceUrl6,
       inputSourceDescription6: articles.inputSourceDescription6,
       inputSourceAccredit6: articles.inputSourceAccredit6,
       inputSourceVerbatim6: articles.inputSourceVerbatim6,
@@ -312,7 +343,7 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
     .from(articles)
     .leftJoin(users, eq(articles.createdBy, users.id))
     .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug)))
-    .orderBy(desc(articles.version));
+    .orderBy(desc(articles.versionDecimal));
 }
 
 /**
@@ -382,18 +413,20 @@ export async function getOrgPresets(orgId: number): Promise<Preset[]> {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Create a new article record with all input and output fields.
+ * Create a new AI-generated article record with all input and output fields.
+ * Creates AI versions with .00 decimal format (e.g., 1.00, 2.00, 3.00).
  * Always creates a new row - no complex transaction logic needed.
  * Handles version conflicts by automatically incrementing version on duplicate key violations.
  *
  * @param payload - Article creation payload with all data
  * @returns The article ID for use in subsequent pipeline steps
  */
-export async function createArticleRecord(payload: {
+export async function createAiArticleRecord(payload: {
   metadata: {
     userId: string;
     orgId: string;
     currentVersion: number | null;
+    currentVersionDecimal: string | null;
   };
   sourceType: "single" | "multi";
   slug: string;
@@ -402,6 +435,7 @@ export async function createArticleRecord(payload: {
     description: string;
     accredit: string;
     sourceText: string;
+    url?: string; // Add URL field
     verbatim: boolean;
     primary: boolean;
   }>;
@@ -428,19 +462,21 @@ export async function createArticleRecord(payload: {
   return await db.transaction(async (tx) => {
     // Lock and get the current highest version for this slug
     const [currentHighest] = await tx
-      .select({ version: articles.version })
+      .select({ version: articles.version, versionDecimal: articles.versionDecimal })
       .from(articles)
       .where(and(eq(articles.orgId, orgId), eq(articles.slug, payload.slug)))
-      .orderBy(desc(articles.version))
+      .orderBy(desc(articles.versionDecimal))
       .limit(1)
       .for("update"); // This locks the row(s) until transaction commits
 
     const nextVersion = (currentHighest?.version || 0) + 1;
+    const nextVersionDecimal = `${nextVersion}.00`; // AI versions always end in .00
 
     // Prepare source data for all 6 possible sources
     const sourceData = {
       // Source 1 (required)
       inputSourceText1: payload.sources[0].sourceText,
+      inputSourceUrl1: payload.sources[0].url || "",
       inputSourceDescription1: payload.sources[0].description,
       inputSourceAccredit1: payload.sources[0].accredit,
       inputSourceVerbatim1: payload.sources[0].verbatim,
@@ -448,6 +484,7 @@ export async function createArticleRecord(payload: {
 
       // Source 2 (optional)
       inputSourceText2: payload.sources[1]?.sourceText || null,
+      inputSourceUrl2: payload.sources[1]?.url || "",
       inputSourceDescription2: payload.sources[1]?.description || "",
       inputSourceAccredit2: payload.sources[1]?.accredit || "",
       inputSourceVerbatim2: payload.sources[1]?.verbatim || false,
@@ -455,6 +492,7 @@ export async function createArticleRecord(payload: {
 
       // Source 3 (optional)
       inputSourceText3: payload.sources[2]?.sourceText || null,
+      inputSourceUrl3: payload.sources[2]?.url || "",
       inputSourceDescription3: payload.sources[2]?.description || "",
       inputSourceAccredit3: payload.sources[2]?.accredit || "",
       inputSourceVerbatim3: payload.sources[2]?.verbatim || false,
@@ -462,6 +500,7 @@ export async function createArticleRecord(payload: {
 
       // Source 4 (optional)
       inputSourceText4: payload.sources[3]?.sourceText || null,
+      inputSourceUrl4: payload.sources[3]?.url || "",
       inputSourceDescription4: payload.sources[3]?.description || "",
       inputSourceAccredit4: payload.sources[3]?.accredit || "",
       inputSourceVerbatim4: payload.sources[3]?.verbatim || false,
@@ -469,6 +508,7 @@ export async function createArticleRecord(payload: {
 
       // Source 5 (optional)
       inputSourceText5: payload.sources[4]?.sourceText || null,
+      inputSourceUrl5: payload.sources[4]?.url || "",
       inputSourceDescription5: payload.sources[4]?.description || "",
       inputSourceAccredit5: payload.sources[4]?.accredit || "",
       inputSourceVerbatim5: payload.sources[4]?.verbatim || false,
@@ -476,6 +516,7 @@ export async function createArticleRecord(payload: {
 
       // Source 6 (optional)
       inputSourceText6: payload.sources[5]?.sourceText || null,
+      inputSourceUrl6: payload.sources[5]?.url || "",
       inputSourceDescription6: payload.sources[5]?.description || "",
       inputSourceAccredit6: payload.sources[5]?.accredit || "",
       inputSourceVerbatim6: payload.sources[5]?.verbatim || false,
@@ -489,6 +530,7 @@ export async function createArticleRecord(payload: {
         orgId,
         slug: payload.slug,
         version: nextVersion,
+        versionDecimal: nextVersionDecimal,
         headline: payload.headline,
         status: "pending",
         sourceType: sourceType,
@@ -539,6 +581,136 @@ export async function updateArticleWithResults(articleId: string, userId: string
       updatedAt: new Date(),
     })
     .where(eq(articles.id, articleId));
+}
+
+/**
+ * Create a new human-edited version of an article.
+ * Increments the decimal part of the version (e.g., 3.00 → 3.01, 3.01 → 3.02).
+ *
+ * @param baseArticle - The current article to create a new version from
+ * @param userId - User ID for audit trail
+ * @param updates - Fields to update in the new version
+ * @returns New article version
+ */
+export async function createHumanEditedVersion(
+  baseArticle: Article,
+  userId: string,
+  updates: Partial<Pick<Article, "headline" | "blob" | "content" | "richContent" | "status">>
+): Promise<Article> {
+  return await db.transaction(async (tx) => {
+    // Get the major version from the base article
+    const majorVersion = baseArticle.version;
+    
+    // Find the highest decimal version for this major version
+    const [currentHighest] = await tx
+      .select({ versionDecimal: articles.versionDecimal })
+      .from(articles)
+      .where(and(
+        eq(articles.orgId, baseArticle.orgId),
+        eq(articles.slug, baseArticle.slug),
+        eq(articles.version, majorVersion) // Same major version
+      ))
+      .orderBy(desc(articles.versionDecimal))
+      .limit(1)
+      .for("update"); // Lock to prevent race conditions
+
+    // Calculate next decimal version
+    let nextVersionDecimal: string;
+    if (currentHighest) {
+      const currentDecimal = parseFloat(currentHighest.versionDecimal);
+      const currentMajor = Math.floor(currentDecimal);
+      const currentMinor = Math.round((currentDecimal - currentMajor) * 100);
+      nextVersionDecimal = `${currentMajor}.${String(currentMinor + 1).padStart(2, '0')}`;
+    } else {
+      // Fallback if no existing versions found (shouldn't happen)
+      nextVersionDecimal = `${majorVersion}.01`;
+    }
+
+    // Create new article record with incremented decimal version
+    const [newArticle] = await tx
+      .insert(articles)
+      .values({
+        // Copy all fields from base article
+        orgId: baseArticle.orgId,
+        slug: baseArticle.slug,
+        version: baseArticle.version, // Keep same integer version
+        versionDecimal: nextVersionDecimal, // Increment decimal version
+        sourceType: baseArticle.sourceType,
+
+        // Copy all source data
+        inputSourceText1: baseArticle.inputSourceText1,
+        inputSourceUrl1: baseArticle.inputSourceUrl1,
+        inputSourceDescription1: baseArticle.inputSourceDescription1,
+        inputSourceAccredit1: baseArticle.inputSourceAccredit1,
+        inputSourceVerbatim1: baseArticle.inputSourceVerbatim1,
+        inputSourcePrimary1: baseArticle.inputSourcePrimary1,
+        inputSourceBase1: baseArticle.inputSourceBase1,
+
+        inputSourceText2: baseArticle.inputSourceText2,
+        inputSourceUrl2: baseArticle.inputSourceUrl2,
+        inputSourceDescription2: baseArticle.inputSourceDescription2,
+        inputSourceAccredit2: baseArticle.inputSourceAccredit2,
+        inputSourceVerbatim2: baseArticle.inputSourceVerbatim2,
+        inputSourcePrimary2: baseArticle.inputSourcePrimary2,
+        inputSourceBase2: baseArticle.inputSourceBase2,
+
+        inputSourceText3: baseArticle.inputSourceText3,
+        inputSourceUrl3: baseArticle.inputSourceUrl3,
+        inputSourceDescription3: baseArticle.inputSourceDescription3,
+        inputSourceAccredit3: baseArticle.inputSourceAccredit3,
+        inputSourceVerbatim3: baseArticle.inputSourceVerbatim3,
+        inputSourcePrimary3: baseArticle.inputSourcePrimary3,
+        inputSourceBase3: baseArticle.inputSourceBase3,
+
+        inputSourceText4: baseArticle.inputSourceText4,
+        inputSourceUrl4: baseArticle.inputSourceUrl4,
+        inputSourceDescription4: baseArticle.inputSourceDescription4,
+        inputSourceAccredit4: baseArticle.inputSourceAccredit4,
+        inputSourceVerbatim4: baseArticle.inputSourceVerbatim4,
+        inputSourcePrimary4: baseArticle.inputSourcePrimary4,
+        inputSourceBase4: baseArticle.inputSourceBase4,
+
+        inputSourceText5: baseArticle.inputSourceText5,
+        inputSourceUrl5: baseArticle.inputSourceUrl5,
+        inputSourceDescription5: baseArticle.inputSourceDescription5,
+        inputSourceAccredit5: baseArticle.inputSourceAccredit5,
+        inputSourceVerbatim5: baseArticle.inputSourceVerbatim5,
+        inputSourcePrimary5: baseArticle.inputSourcePrimary5,
+        inputSourceBase5: baseArticle.inputSourceBase5,
+
+        inputSourceText6: baseArticle.inputSourceText6,
+        inputSourceUrl6: baseArticle.inputSourceUrl6,
+        inputSourceDescription6: baseArticle.inputSourceDescription6,
+        inputSourceAccredit6: baseArticle.inputSourceAccredit6,
+        inputSourceVerbatim6: baseArticle.inputSourceVerbatim6,
+        inputSourcePrimary6: baseArticle.inputSourcePrimary6,
+        inputSourceBase6: baseArticle.inputSourceBase6,
+
+        // Copy preset data
+        inputPresetTitle: baseArticle.inputPresetTitle,
+        inputPresetInstructions: baseArticle.inputPresetInstructions,
+        inputPresetBlobs: baseArticle.inputPresetBlobs,
+        inputPresetLength: baseArticle.inputPresetLength,
+
+        // Apply updates (headline, blob, content, richContent, status)
+        headline: updates.headline ?? baseArticle.headline,
+        blob: updates.blob ?? baseArticle.blob,
+        content: updates.content ?? baseArticle.content,
+        richContent: updates.richContent ?? baseArticle.richContent,
+        status: updates.status ?? baseArticle.status,
+
+        // Audit fields
+        createdBy: userId,
+        updatedBy: userId,
+      })
+      .returning();
+
+    if (!newArticle) {
+      throw new Error("Failed to create human-edited version");
+    }
+
+    return newArticle;
+  });
 }
 
 /**

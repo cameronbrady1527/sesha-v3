@@ -26,13 +26,13 @@ interface ArticleContextValue {
   // All article versions (full data with creator info)
   articles: ArticleWithCreator[];
   currentArticle: ArticleWithCreator | null;
-  currentVersion: number;
+  currentVersion: string; // Changed to string to support decimal versions like "3.01"
   
   // Version metadata for sidebar (computed from articles)
   versionMetadata: ArticleVersionMetadata[];
   
   // Actions
-  setCurrentVersion: (version: number) => void;
+  setCurrentVersion: (version: string) => void; // Changed to string
   updateCurrentArticle: (updates: Partial<Article>) => void;
   
   // Computed values
@@ -45,6 +45,9 @@ interface ArticleContextValue {
   // Change tracking
   hasChanges: boolean;
   originalArticle: ArticleWithCreator | null;
+  
+  // Loading state
+  isVersionSwitching: boolean;
   
   // Full current article for creating new versions
   getCurrentArticleForNewVersion: () => ArticleWithCreator | null;
@@ -63,7 +66,7 @@ const ArticleContext = createContext<ArticleContextValue | undefined>(undefined)
 interface ArticleProviderProps {
   children: ReactNode;
   articles: ArticleWithCreator[]; // Updated to use extended type
-  initialVersion?: number;
+  initialVersionDecimal?: string; // Primary decimal version (e.g., "3.01")
 }
 
 /**
@@ -74,34 +77,83 @@ interface ArticleProviderProps {
  * Tracks changes to enable/disable save functionality.
  * Stores full Article objects for creating new versions.
  */
-function ArticleProvider({ children, articles, initialVersion }: ArticleProviderProps) {
+function ArticleProvider({ children, articles, initialVersionDecimal }: ArticleProviderProps) {
   // Debug logging
   console.log("🔍 ArticleProvider received articles:", articles.map(a => ({
     id: a.id,
     version: a.version,
+    versionDecimal: a.versionDecimal,
     content: a.content,
     richContent: a.richContent,
     contentLength: a.content?.length,
     contentType: typeof a.content
   })));
 
-  // Get the initial version (default to highest version if not specified)
-  const defaultVersion = initialVersion || (articles.length > 0 ? Math.max(...articles.map(a => a.version)) : 1);
-  const [currentVersion, setCurrentVersion] = useState(defaultVersion);
+  // Get the initial decimal version (default to highest decimal version if not specified)
+  const defaultVersionDecimal = initialVersionDecimal || (articles.length > 0 ? 
+    articles.sort((a, b) => parseFloat(b.versionDecimal) - parseFloat(a.versionDecimal))[0].versionDecimal : 
+    "1.00"
+  );
   
-  // Track the current working copy and original for change detection
-  const originalArticle = articles.find(article => article.version === currentVersion) || articles[0] || null;
+  console.log("🎯 ArticleProvider initialVersionDecimal:", initialVersionDecimal, "defaultVersionDecimal:", defaultVersionDecimal);
+  
+  const [currentVersion, setCurrentVersion] = useState(defaultVersionDecimal);
+  
+  // Loading state for version switching
+  const [isVersionSwitching, setIsVersionSwitching] = useState(false);
+  
+  // Get the original article based on current version (this updates when version changes)
+  const originalArticle = React.useMemo(() => {
+    const article = articles.find(article => article.versionDecimal === currentVersion) || articles[0] || null;
+    console.log("🔄 originalArticle updated for version:", currentVersion, "found:", article?.id);
+    return article;
+  }, [currentVersion, articles]);
+  
+  // Track the current working copy - initialize with original article
   const [currentArticle, setCurrentArticle] = useState<ArticleWithCreator | null>(originalArticle);
   
-  // Update current article when version changes
+  // Update current article when version changes OR when initialVersionDecimal changes
   React.useEffect(() => {
-    const newArticle = articles.find(article => article.version === currentVersion) || articles[0] || null;
+    console.log("🔄 Version change effect - currentVersion:", currentVersion, "initialVersionDecimal:", initialVersionDecimal);
+    
+    const newArticle = articles.find(article => article.versionDecimal === currentVersion) || articles[0] || null;
+    console.log("🔄 Setting new article:", newArticle?.id, "versionDecimal:", newArticle?.versionDecimal);
     setCurrentArticle(newArticle);
-  }, [currentVersion, articles]);
+    
+    // Clear loading state when content has actually updated
+    if (isVersionSwitching && newArticle) {
+      const timer = setTimeout(() => {
+        setIsVersionSwitching(false);
+      }, 500); // Longer delay to ensure TextEditor and all content renders
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentVersion, articles, isVersionSwitching, initialVersionDecimal]);
+  
+  // Update currentVersion when initialVersionDecimal changes (URL navigation)
+  React.useEffect(() => {
+    if (initialVersionDecimal && initialVersionDecimal !== currentVersion) {
+      console.log("🌐 URL version change detected:", initialVersionDecimal, "current:", currentVersion);
+      // Only update version, don't set loading since this is URL sync
+      setCurrentVersion(initialVersionDecimal);
+    }
+  }, [initialVersionDecimal, currentVersion]);
+  
+  // Enhanced setCurrentVersion function to include loading state
+  const handleSetCurrentVersion = (version: string) => {
+    if (version !== currentVersion) {
+      // Immediately update version for UI responsiveness
+      setCurrentVersion(version);
+      
+      // Then set loading state
+      setIsVersionSwitching(true);
+    }
+  };
   
   // Generate version metadata for the sidebar from full articles
   const versionMetadata: ArticleVersionMetadata[] = articles.map(article => ({
     version: article.version,
+    versionDecimal: article.versionDecimal,
     slug: article.slug,
     headline: article.headline,
     createdAt: article.createdAt,
@@ -192,7 +244,7 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
     currentArticle,
     currentVersion,
     versionMetadata,
-    setCurrentVersion,
+    setCurrentVersion: handleSetCurrentVersion,
     updateCurrentArticle,
     slug,
     headline,
@@ -202,6 +254,7 @@ function ArticleProvider({ children, articles, initialVersion }: ArticleProvider
     hasChanges,
     originalArticle,
     getCurrentArticleForNewVersion,
+    isVersionSwitching,
   };
   
   return (

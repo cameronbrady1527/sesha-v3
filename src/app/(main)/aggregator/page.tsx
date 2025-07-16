@@ -2,7 +2,7 @@
 // page.tsx — Unified Aggregator page layout with resizable panels
 /* ==========================================================================*/
 // Purpose: Show aggregator builder using unified context and shared components.
-//          If ?slug=&version= are provided we pre-fill the context with that 
+//          If ?slug=&version= are provided we pre-fill the context with that
 //          article's data; otherwise the builder is blank.
 // Sections: Imports ▸ Utility Functions ▸ Data fetch ▸ Component ▸ Exports
 /* ==========================================================================*/
@@ -34,27 +34,23 @@ import { ArticleHandlerProvider, type ArticleHandlerState } from "@/components/a
 
 /**
  * buildInitialStateFromInputs
- * 
+ *
  * Converts Article inputs from the database into ArticleHandlerState format
  * for pre-filling the aggregator form with up to 6 sources.
- * 
+ *
  * @param inputs - The article inputs from the database
  * @param orgId - Organization ID
  * @param currentVersion - The current version of the article
  * @returns Partial ArticleHandlerState for context initialization
  */
-function buildInitialStateFromInputs(
-  inputs: Article, 
-  orgId: number = 1,
-  currentVersion: number = 1
-): Partial<ArticleHandlerState> {
+function buildInitialStateFromInputs(inputs: Article, orgId: number = 1, currentVersion: number = 1): Partial<ArticleHandlerState> {
   // Build sources array from database fields
   const sources = [];
-  
+
   // Source 1 (always present since it's required)
   sources.push({
     id: `source-1-${Date.now()}`,
-    url: "", // URL is not stored in DB, only used for processing
+    url: inputs.inputSourceUrl1 || "",
     usage: {
       sourceText: inputs.inputSourceText1,
       description: inputs.inputSourceDescription1,
@@ -62,14 +58,14 @@ function buildInitialStateFromInputs(
       verbatim: inputs.inputSourceVerbatim1,
       primary: inputs.inputSourcePrimary1,
       base: false, // Default to false, can be changed in UI
-    }
+    },
   });
 
   // Sources 2-6 (optional, only add if they have content)
   if (inputs.inputSourceText2) {
     sources.push({
       id: `source-2-${Date.now()}`,
-      url: "",
+      url: inputs.inputSourceUrl2 || "",
       usage: {
         sourceText: inputs.inputSourceText2,
         description: inputs.inputSourceDescription2 || "",
@@ -77,14 +73,14 @@ function buildInitialStateFromInputs(
         verbatim: inputs.inputSourceVerbatim2 || false,
         primary: inputs.inputSourcePrimary2 || false,
         base: false,
-      }
+      },
     });
   }
 
   if (inputs.inputSourceText3) {
     sources.push({
       id: `source-3-${Date.now()}`,
-      url: "",
+      url: inputs.inputSourceUrl3 || "",
       usage: {
         sourceText: inputs.inputSourceText3,
         description: inputs.inputSourceDescription3 || "",
@@ -92,14 +88,14 @@ function buildInitialStateFromInputs(
         verbatim: inputs.inputSourceVerbatim3 || false,
         primary: inputs.inputSourcePrimary3 || false,
         base: false,
-      }
+      },
     });
   }
 
   if (inputs.inputSourceText4) {
     sources.push({
       id: `source-4-${Date.now()}`,
-      url: "",
+      url: inputs.inputSourceUrl4 || "",
       usage: {
         sourceText: inputs.inputSourceText4,
         description: inputs.inputSourceDescription4 || "",
@@ -107,14 +103,14 @@ function buildInitialStateFromInputs(
         verbatim: inputs.inputSourceVerbatim4 || false,
         primary: inputs.inputSourcePrimary4 || false,
         base: false,
-      }
+      },
     });
   }
 
   if (inputs.inputSourceText5) {
     sources.push({
       id: `source-5-${Date.now()}`,
-      url: "",
+      url: inputs.inputSourceUrl5 || "",
       usage: {
         sourceText: inputs.inputSourceText5,
         description: inputs.inputSourceDescription5 || "",
@@ -122,14 +118,14 @@ function buildInitialStateFromInputs(
         verbatim: inputs.inputSourceVerbatim5 || false,
         primary: inputs.inputSourcePrimary5 || false,
         base: false,
-      }
+      },
     });
   }
 
   if (inputs.inputSourceText6) {
     sources.push({
       id: `source-6-${Date.now()}`,
-      url: "",
+      url: inputs.inputSourceUrl6 || "",
       usage: {
         sourceText: inputs.inputSourceText6,
         description: inputs.inputSourceDescription6 || "",
@@ -137,18 +133,18 @@ function buildInitialStateFromInputs(
         verbatim: inputs.inputSourceVerbatim6 || false,
         primary: inputs.inputSourcePrimary6 || false,
         base: false,
-      }
+      },
     });
   }
 
   return {
     basic: {
       slug: inputs.slug,
-      headline: ""
+      headline: "",
     },
     sources,
     preset: {
-      title: inputs.inputPresetTitle ?? "", 
+      title: inputs.inputPresetTitle ?? "",
       instructions: inputs.inputPresetInstructions,
       blobs: inputs.inputPresetBlobs,
       length: inputs.inputPresetLength,
@@ -157,12 +153,12 @@ function buildInitialStateFromInputs(
       orgId,
       currentVersion,
     },
-    mode: 'multi', // Always multi mode for aggregator
+    mode: "multi", // Always multi mode for aggregator
   };
 }
 
 /* ==========================================================================*/
-// Main Component  
+// Main Component
 /* ==========================================================================*/
 
 /**
@@ -171,11 +167,7 @@ function buildInitialStateFromInputs(
  * Unified aggregator page with resizable left panel for input forms and right panel for presets manager.
  * Uses shared components and unified context. 70/30 split with user-adjustable resize handle.
  */
-async function Aggregator2Page({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ slug?: string; version?: string }> 
-}) {
+async function Aggregator2Page({ searchParams }: { searchParams: Promise<{ slug?: string; version?: string }> }) {
   /* ------------------------- 1. Parse URL params ----------------------- */
   const { slug, version } = await searchParams;
   const ORG_ID = 1; // <-- replace w/ auth session later
@@ -189,18 +181,15 @@ async function Aggregator2Page({
   if (slug) {
     try {
       // Get both article metadata and inputs
-      const article = await getArticleByOrgSlugVersion(ORG_ID, slug, version ? Number(version) : 1);
-      
+      const article = await getArticleByOrgSlugVersion(ORG_ID, slug, version ? version : "1.00");
+
       if (article) {
-        initialState = buildInitialStateFromInputs(
-          article, 
-          ORG_ID,
-          version ? Number(version) : 1
-        );
+        console.log("🔍 article:", article);
+        initialState = buildInitialStateFromInputs(article, ORG_ID, version ? Number(version) : 1);
       }
       // If no article found, initialState remains undefined (blank form)
     } catch (error) {
-      console.error('Failed to fetch article, leaving blank form:', error);
+      console.error("Failed to fetch article, leaving blank form:", error);
       // Continue with blank form on error
     }
   }
@@ -214,11 +203,11 @@ async function Aggregator2Page({
         orgId: ORG_ID,
         currentVersion: version ? Number(version) : 1,
       },
-      mode: 'multi',
+      mode: "multi",
     };
   } else {
     // Ensure mode is set to multi even when loading existing article
-    initialState.mode = 'multi';
+    initialState.mode = "multi";
   }
 
   console.log("🔍 Aggregator2Page initialState:", initialState);
@@ -234,7 +223,7 @@ async function Aggregator2Page({
               <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-12">
                 <BasicArticleInputs />
                 <SourceInputs />
-                <ArticleActions />   
+                <ArticleActions />
               </div>
             </div>
           </ResizablePanel>

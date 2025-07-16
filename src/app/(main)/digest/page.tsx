@@ -51,7 +51,7 @@ function buildInitialStateFromInputs(
   // Build single source from database fields
   const sources = [{
     id: `source-1-${Date.now()}`,
-    url: "", // URL is not stored in DB, only used for processing
+    url: inputs.inputSourceUrl1 || "",
     usage: {
       sourceText: inputs.inputSourceText1,
       description: inputs.inputSourceDescription1,
@@ -110,7 +110,7 @@ async function Digest2Page({
   if (slug) {
     try {
       // Get both article metadata and inputs
-      const article = await getArticleByOrgSlugVersion(ORG_ID, slug, version ? Number(version) : 1);
+      const article = await getArticleByOrgSlugVersion(ORG_ID, slug, version ? version : "1.00");
       
       if (article) {
         initialState = buildInitialStateFromInputs(
@@ -135,11 +135,11 @@ async function Digest2Page({
         orgId: ORG_ID,
         currentVersion: version ? Number(version) : 1,
       },
-      mode: 'single',
+      mode: "single",
     };
   } else {
     // Ensure mode is set to single even when loading existing article
-    initialState.mode = 'single';
+    initialState.mode = "single";
   }
 
   console.log("🔍 Digest2Page initialState:", initialState);

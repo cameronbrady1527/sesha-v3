@@ -14,6 +14,9 @@
 // React core ----------------------------------------------------------------
 import React, { useTransition } from "react";
 
+// Next.js ---
+import { useRouter } from "next/navigation";
+
 // shadcn/ui components ------------------------------------------------------
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -33,7 +36,7 @@ import { SerializedEditorState } from "lexical";
 import { useArticle } from "./article-context";
 
 // Local Modules -------------------------------------------------------------
-import { createNewVersionAction } from "@/actions/article";
+import { createHumanEditedVersionAction } from "@/actions/article";
 import TextEditor from "../text-editor/TextEditor";
 
 /* ==========================================================================*/
@@ -53,6 +56,7 @@ import TextEditor from "../text-editor/TextEditor";
  */
 function ArticleContent() {
   const { currentArticle, setCurrentVersion, hasChanges, updateCurrentArticle } = useArticle();
+  const router = useRouter();
   // const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -136,22 +140,24 @@ function ArticleContent() {
           status: "completed" as const
         };
         
-        console.log("📤 Calling createNewVersionAction with:", {
+        console.log("📤 Calling createHumanEditedVersionAction with:", {
           currentArticle,
           updateData
         });
         
-        const result = await createNewVersionAction(currentArticle, updateData);
+        const result = await createHumanEditedVersionAction(currentArticle, updateData);
 
         console.log("📥 Server action result:", result);
 
         if (result.success) {
-          setCurrentVersion(result.article?.version ?? currentArticle.version + 1);
-          toast.success("New version created successfully");
-          // No need to handle success further since the action redirects
+          const newVersion = result.article?.versionDecimal ?? currentArticle.versionDecimal;
+          setCurrentVersion(newVersion);
+          toast.success("Edited version saved successfully");
+          // Navigate to the new version URL
+          router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${encodeURIComponent(newVersion)}`);
         } else {
           console.log(result.error);
-          toast.error("Failed to create new version");
+          toast.error("Failed to save edited version");
         }
       } catch (error) {
         console.error("❌ Client error:", error);

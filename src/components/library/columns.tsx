@@ -139,7 +139,7 @@ const columns: ColumnDef<ArticleMetadata>[] = [
 
   /* ------------------------------- Version ------------------------------ */
   {
-    accessorKey: "version",
+    accessorKey: "versionDecimal",
     header: ({ column }) => (
       <div className="flex justify-center">
         <Button
@@ -147,16 +147,16 @@ const columns: ColumnDef<ArticleMetadata>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 font-medium"
         >
-          Ver <ArrowUpDown className="ml-1 h-4 w-4" />
+          Version <ArrowUpDown className="ml-1 h-4 w-4" />
         </Button>
       </div>
     ),
     cell: ({ row }) => (
       <div className="text-center">
-        <span>{row.getValue<number>("version")}</span>
+        <span>{row.getValue<string>("versionDecimal")}</span>
       </div>
     ),
-    size: 60,
+    size: 80,
   },
 
   /* -------------------------------- Author ------------------------------ */
