@@ -523,9 +523,10 @@ export async function createArticleRecord(payload: {
  * @param isSuccessful - Whether the pipeline completed successfully
  * @param headline - Generated headline from step 3
  * @param blobs - Generated blobs from step 3
- * @param formattedArticle - Final formatted article from step 7
+ * @param formattedArticle - Final formatted article from step 8
+ * @param richContent - Rich content JSON from step 8 (optional)
  */
-export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string): Promise<void> {
+export async function updateArticleWithResults(articleId: string, userId: string, isSuccessful: boolean, headline: string, blobs: string[], formattedArticle: string, richContent?: string): Promise<void> {
   await db
     .update(articles)
     .set({
@@ -533,6 +534,7 @@ export async function updateArticleWithResults(articleId: string, userId: string
       headline: isSuccessful ? headline : null,
       blob: isSuccessful ? blobs.join("\n") : null,
       content: isSuccessful ? formattedArticle : null,
+      richContent: isSuccessful && richContent ? richContent : null,
       updatedBy: userId,
       updatedAt: new Date(),
     })

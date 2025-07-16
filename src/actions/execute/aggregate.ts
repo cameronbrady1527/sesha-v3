@@ -978,7 +978,7 @@ async function runAggregatePipeline(articleId: string, request: AggregateRequest
     const isSuccessful = validatePipelineSuccess(step1Result, step2Result, step3Result, step4Result, step5Result, step6Result, step7Result, step8Result);
 
     // Update article with results
-    await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step8Result.colorCodedArticle);
+    await updateArticleWithResults(articleId, request.metadata.userId, isSuccessful, step3Result.headline, step3Result.blobs, step8Result.colorCodedArticle, step8Result.richContent);
 
     // Build response
     const response: PipelineResponse = {
