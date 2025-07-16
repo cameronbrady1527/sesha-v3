@@ -44,7 +44,7 @@ export function NavigationActions({ user }: NavigationActionsProps) {
     event.stopPropagation();
     
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL || window.location.origin;
+      const baseUrl = process.env.NEXT_PUBLIC_URL || window.location.origin;
       const inviteUrl = `${baseUrl}/register?orgId=${user.orgId}`;
       await navigator.clipboard.writeText(inviteUrl);
       
