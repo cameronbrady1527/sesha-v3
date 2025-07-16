@@ -533,6 +533,7 @@ export async function updateArticleWithResults(articleId: string, userId: string
       headline: isSuccessful ? headline : null,
       blob: isSuccessful ? blobs.join("\n") : null,
       content: isSuccessful ? formattedArticle : null,
+      richContent: isSuccessful ? richContent ?? null : null,
       updatedBy: userId,
       updatedAt: new Date(),
     })
