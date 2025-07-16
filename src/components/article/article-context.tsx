@@ -14,7 +14,6 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Article } from "@/db/schema";
 import { ArticleVersionMetadata } from "@/db/dal";
-import { stat } from "fs";
 
 /* ==========================================================================*/
 // Types

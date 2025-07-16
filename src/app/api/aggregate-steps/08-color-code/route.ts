@@ -17,7 +17,6 @@ import { generateText } from "ai";
 // Local Utilities ---
 import { formatPrompt2, PromptType, validateRequest } from "@/lib/utils";
 import { createPipelineLogger } from "@/lib/pipeline-logger";
-import { updateArticle } from "@/db/dal";
 
 // Local Types ----
 import { Step08ColorCodeRequest, Step08ColorCodeAIResponse } from "@/types/aggregate";

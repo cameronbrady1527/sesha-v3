@@ -12,7 +12,7 @@
 /* ==========================================================================*/
 
 // React core ----------------------------------------------------------------
-import React, { useState, useTransition } from "react";
+import React, { useTransition } from "react";
 
 // shadcn/ui components ------------------------------------------------------
 import { Label } from "@/components/ui/label";

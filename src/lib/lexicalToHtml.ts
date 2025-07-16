@@ -19,6 +19,7 @@ export function convertRichContentToHTML(richContent: string, meta: {
     <div style="margin-bottom: 1em;"></div>`;
 
   // Traverse the Lexical structure and convert to HTML
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function traverse(nodes: any[]): string {
     return nodes
       .map((node) => {
@@ -39,6 +40,7 @@ export function convertRichContentToHTML(richContent: string, meta: {
           case "list": {
             // Handle bullet, number, and checklist
             if (node.listType === "check") {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const items = (node.children || []).map((item: any) => {
                 const inner = traverse(item.children || []);
                 const checked = item.checked ? "☑" : "☐";
@@ -47,6 +49,7 @@ export function convertRichContentToHTML(richContent: string, meta: {
               return `<ul style="list-style: none; padding-left: 0;">${items}</ul>`;
             } else {
               const tag = node.listType === "number" ? "ol" : "ul";
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const items = (node.children || []).map((item: any) => {
                 const content = traverse(item.children || []);
                 return `<li>${content}</li>`;

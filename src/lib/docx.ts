@@ -28,7 +28,9 @@ export async function generateDocx({
   const parsed = JSON.parse(richContent);
 
   // Helper: convert text node to TextRun
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function runsForText(node: any): TextRun {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const opts: any = { text: node.text || "" };
     if (node.format & 1) opts.bold = true;
     if (node.format & 2) opts.italics = true;
@@ -47,6 +49,7 @@ export async function generateDocx({
   }
 
   // Build paragraphs
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function buildParagraphs(nodes: any[]): Paragraph[] {
     const paras: Paragraph[] = [];
     for (const node of nodes) {

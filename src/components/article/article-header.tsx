@@ -23,13 +23,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 // Lucide Icons ---
-import { FileText, Download, Mail, Loader2, ArrowLeft } from "lucide-react";
+import { FileText, Download, Loader2, ArrowLeft } from "lucide-react";
 
 // Local Modules ---
 import { useArticle } from "./article-context";
 import { createNewVersionAction } from "@/actions/article";
 import { handleExportAction, ExportType } from "@/actions/export";
-import { set } from "zod";
 
 /* ==========================================================================*/
 // Version Dropdown
@@ -145,8 +144,6 @@ function ArticleHeader() {
   };
 
   const handleExport = async (exportType: ExportType) => {
-    console.log('in export');
-    
     if (!currentArticle) {
       toast.error("No article to export");
       return;
