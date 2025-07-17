@@ -247,7 +247,7 @@ function ArticleDataTable({ articles, isLoading = false, onArticleClick, onArtic
 
       {/* Data table */}
       <div className="rounded-md border overflow-x-auto">
-        <Table className="min-w-[1020px]">
+        <Table className="min-w-[1100px]">
           <TableHeader className="bg-gray-100">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

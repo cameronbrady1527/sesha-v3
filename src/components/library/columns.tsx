@@ -9,9 +9,12 @@
 // Imports
 /* ==========================================================================*/
 
+// React Core ---------------------------------------------------------------
+import React, { useState } from "react";
+
 // External Packages --------------------------------------------------------
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Copy, Check } from "lucide-react";
 
 // Local Modules ------------------------------------------------------------
 import { Button } from "@/components/ui/button";
@@ -106,6 +109,66 @@ const columns: ColumnDef<ArticleMetadata>[] = [
       );
     },
     size: 140,
+  },
+
+  /* ------------------------------ Copy Link ----------------------------- */
+  {
+    id: "copyLink",
+    header: () => (
+      <div className="flex justify-center">
+        <span className="text-xs font-medium">Copy</span>
+      </div>
+    ),
+    cell: ({ row }) => {
+      const CopyCell = () => {
+        const [isCopied, setIsCopied] = useState(false);
+
+                 const handleCopyLink = async (event: React.MouseEvent) => {
+           event.stopPropagation();
+           const slug = row.original.slug;
+           const version = row.original.versionDecimal;
+           const baseUrl = process.env.NEXT_PUBLIC_URL || window.location.origin;
+           const articleUrl = `${baseUrl}/article?slug=${slug}&version=${version}`;
+           
+           try {
+             await navigator.clipboard.writeText(articleUrl);
+             setIsCopied(true);
+             setTimeout(() => setIsCopied(false), 2000);
+           } catch (err) {
+             console.error('Failed to copy link:', err);
+           }
+         };
+
+        return (
+          <div className="flex justify-center w-24">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyLink}
+              className="h-8 px-2 py-1 hover:bg-muted transition-all duration-200"
+              aria-label="Copy article link"
+            >
+              {isCopied ? (
+                <div className="flex items-center gap-1 text-green-600">
+                  <Check className="h-3 w-3 animate-in fade-in duration-200" />
+                  <span className="text-xs">Copied</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Copy className="h-3 w-3" />
+                  <span className="text-xs">Copy</span>
+                </div>
+              )}
+            </Button>
+          </div>
+        );
+      };
+
+      return <CopyCell />;
+    },
+    enableSorting: false,
+    enableHiding: false,
+    size: 150,
   },
 
   /* -------------------------------- Slug -------------------------------- */

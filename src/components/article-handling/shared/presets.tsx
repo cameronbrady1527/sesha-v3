@@ -64,7 +64,6 @@ function PresetsManager({ presets = [] }: PresetsProps) {
   const [saveError, setSaveError] = useState<string>("");
 
   const currentPreset = presets.find((p) => p.id === selectedId);
-  const isUpdateMode = !!currentPreset;
 
   /* --------------------------- helper functions ------------------------- */
   
@@ -87,23 +86,18 @@ function PresetsManager({ presets = [] }: PresetsProps) {
   const hasChanges = (): boolean => {
     if (!currentPreset) return true; // New preset always has "changes"
     return (
+      preset.title !== currentPreset.name ||
       preset.instructions !== currentPreset.instructions ||
       preset.blobs !== currentPreset.blobs ||
       preset.length !== currentPreset.length
     );
   };
 
-  const generateDuplicateName = (baseName: string): string => {
-    let counter = 1;
-    let newName = `${baseName}-${counter}`;
-    
-    while (presets.some(p => p.name.toLowerCase() === newName.toLowerCase())) {
-      counter++;
-      newName = `${baseName}-${counter}`;
-    }
-    
-    return newName;
+  const willUpdateExisting = (): boolean => {
+    return !!currentPreset && preset.title === currentPreset.name;
   };
+
+
 
   /* --------------------------- event handlers --------------------------- */
 
@@ -122,38 +116,31 @@ function PresetsManager({ presets = [] }: PresetsProps) {
     resetForm();
   };
 
-  const handleDuplicate = () => {
-    if (!currentPreset) return;
-    
-    clearError();
-    setSelectedId(""); // Switch to create mode
-    const duplicateName = generateDuplicateName(currentPreset.name);
-    setPreset("title", duplicateName);
-    // Keep other fields as they are
-  };
+
 
   const handleSave = async () => {
     if (!canSavePreset || isLoading) return;
-    if (isUpdateMode && !hasChanges()) return; // No changes to save
+    if (currentPreset && !hasChanges()) return; // No changes to save
 
     setIsLoading(true);
     clearError();
 
     try {
       const ORG_ID = 1; // TODO: replace with auth session
+      const isUpdating = willUpdateExisting();
 
       let result;
-      if (isUpdateMode) {
-        // Update existing preset
+      if (isUpdating) {
+        // Update existing preset (name matches current selection)
         result = await updatePresetAction(
           selectedId,
-          preset.title, // This will be the same as currentPreset.name
+          preset.title,
           preset.instructions,
           preset.blobs as BlobsCount,
           preset.length as LengthRange
         );
       } else {
-        // Create new preset
+        // Create new preset (new name or no selection)
         result = await createPresetAction(
           ORG_ID,
           preset.title,
@@ -164,10 +151,10 @@ function PresetsManager({ presets = [] }: PresetsProps) {
       }
 
       if (result.success) {
-        toast.success(`Preset ${isUpdateMode ? 'updated' : 'created'} successfully`);
-        console.log(`Preset ${isUpdateMode ? 'updated' : 'created'} successfully:`, result.preset);
+        toast.success(`Preset ${isUpdating ? 'updated' : 'created'} successfully`);
+        console.log(`Preset ${isUpdating ? 'updated' : 'created'} successfully:`, result.preset);
         // If we created a new preset, select it
-        if (!isUpdateMode && result.preset) {
+        if (!isUpdating && result.preset) {
           setSelectedId(result.preset.id);
         }
       } else {
@@ -192,77 +179,58 @@ function PresetsManager({ presets = [] }: PresetsProps) {
   const handleField = (field: keyof typeof preset, val: string) =>
     setPreset(field, val as BlobsCount & LengthRange & string);
 
-  const isSaveDisabled = !canSavePreset || (isUpdateMode && !hasChanges()) || isLoading;
+  const isSaveDisabled = !canSavePreset || (currentPreset && !hasChanges()) || isLoading;
 
   /* -------------------------------- UI ---------------------------------- */
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pl-4 py-4 pr-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pl-4 py-4 pr-6 @container">
         {/* Select Preset */}
         <div className="space-y-4">
           <Label className="text-sm font-medium">Select Preset</Label>
-          {presets.length > 0 ? (
-            <div className="space-y-2">
-              {/* Dropdown Row */}
-              <Select value={selectedId} onValueChange={handlePresetSelect}>
-                <SelectTrigger id="preset-select" className="w-full">
-                  <SelectValue placeholder="Choose a preset..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {presets.map((p) => (
+          <div className="space-y-2">
+            {/* Dropdown Row */}
+            <Select value={selectedId} onValueChange={handlePresetSelect}>
+              <SelectTrigger id="preset-select" className="w-full">
+                <SelectValue placeholder={presets.length > 0 ? "Choose a preset..." : "No presets available"} />
+              </SelectTrigger>
+              <SelectContent>
+                {presets.length > 0 ? (
+                  presets.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* Action Buttons */}
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleNewPreset}
-                  className="disabled:opacity-50 disabled:cursor-default border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300"
-                >
-                  New
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDuplicate}
-                  disabled={!currentPreset}
-                  className="disabled:opacity-50 disabled:cursor-default border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300"
-                >
-                  Duplicate
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={isSaveDisabled}
-                  className="disabled:opacity-50 disabled:cursor-default bg-green-600 hover:bg-green-700 text-white"
-                >
-                  {isLoading 
-                    ? "Saving..." 
-                    : isUpdateMode
-                      ? "Update" 
-                      : "Create"
-                  }
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="text-sm text-muted-foreground py-2">
-                No Saved Presets, Create one Below
-              </div>
+                  ))
+                ) : (
+                  <SelectItem value="no-presets" disabled>
+                    No presets available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={handleNewPreset}
+                className="disabled:opacity-50 disabled:cursor-default border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300"
+              >
+                New
+              </Button>
               <Button
                 onClick={handleSave}
                 disabled={isSaveDisabled}
-                className="w-full disabled:opacity-50 disabled:cursor-default"
+                className="disabled:opacity-50 disabled:cursor-default bg-green-600 hover:bg-green-700 text-white"
               >
-                {isLoading ? "Saving..." : "Create Preset"}
+                {isLoading 
+                  ? "Saving..." 
+                  : "Save"
+                }
               </Button>
-            </>
-          )}
+            </div>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -283,7 +251,7 @@ function PresetsManager({ presets = [] }: PresetsProps) {
                 <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>Title cannot be changed when updating. Use &quot;Duplicate&quot; to create a copy with a new name.</p>
+                <p>Keep the same name to update existing preset, or change the name to create a new preset.</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -293,14 +261,13 @@ function PresetsManager({ presets = [] }: PresetsProps) {
             onChange={(e) => handleField("title", e.target.value)}
             placeholder="Enter preset title..."
             className="w-full"
-            disabled={isUpdateMode} // Disable when updating existing preset
           />
         </div>
 
         {/* Blobs */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Blobs</Label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 @max-3xs:grid-cols-1 @lg:grid-cols-3 gap-2">
             {["1", "2", "3", "4", "5", "6"].map((num) => (
               <Button
                 key={num}
@@ -318,7 +285,7 @@ function PresetsManager({ presets = [] }: PresetsProps) {
         {/* Length */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Length</Label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 @max-3xs:grid-cols-1 gap-2">
             {[
               "100-250",
               "400-550",
