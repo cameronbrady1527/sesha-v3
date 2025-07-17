@@ -116,7 +116,7 @@ const columns: ColumnDef<ArticleMetadata>[] = [
     id: "copyLink",
     header: () => (
       <div className="flex justify-center">
-        <span className="text-xs font-medium">Copy</span>
+        <span className="text-xs font-medium">Copy Link</span>
       </div>
     ),
     cell: ({ row }) => {
@@ -156,7 +156,7 @@ const columns: ColumnDef<ArticleMetadata>[] = [
               ) : (
                 <div className="flex items-center gap-1">
                   <Copy className="h-3 w-3" />
-                  <span className="text-xs">Copy</span>
+                  <span className="text-xs">Link</span>
                 </div>
               )}
             </Button>
