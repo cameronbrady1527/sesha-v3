@@ -259,7 +259,7 @@ async function Aggregator2Page({ searchParams }: { searchParams: Promise<{ slug?
         <div className="hidden lg:block h-full">
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {/* Main Content Panel */}
-            <ResizablePanel defaultSize={75} minSize={60} maxSize={75} className="">
+            <ResizablePanel defaultSize={79} minSize={60} maxSize={79} className="">
               <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-12">
                   <BasicArticleInputs />
@@ -272,7 +272,7 @@ async function Aggregator2Page({ searchParams }: { searchParams: Promise<{ slug?
             <ResizableHandle />
             
             {/* Presets Panel */}
-            <ResizablePanel defaultSize={25} minSize={25} maxSize={40} className="bg-secondary/30">
+            <ResizablePanel defaultSize={21} minSize={21} maxSize={40} className="bg-secondary/30">
               <PresetsManager presets={presets} />
             </ResizablePanel>
           </ResizablePanelGroup>
