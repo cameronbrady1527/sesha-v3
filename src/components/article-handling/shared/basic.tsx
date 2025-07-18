@@ -58,6 +58,7 @@ function BasicArticleInputs() {
         description: source.usage.description,
         accredit: source.usage.accredit,
         sourceText: source.usage.sourceText,
+        url: source.url, // Add URL field
         verbatim: source.usage.verbatim,
         primary: source.usage.primary,
         base: source.usage.base,

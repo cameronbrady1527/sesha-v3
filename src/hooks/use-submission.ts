@@ -31,11 +31,12 @@ import type { BlobsCount, LengthRange } from "@/db/schema";
 
 interface PipelineSubmissionParams {
   slug: string;
-  headline: string;
+  headline?: string;
   sources: {
     description: string;
     accredit: string;
     sourceText: string;
+    url: string;
     verbatim: boolean;
     primary: boolean;
     base: boolean;
@@ -45,11 +46,12 @@ interface PipelineSubmissionParams {
   };
   preset: {
     title: string;
-    blobs: string;
-    length: string;
+    blobs: BlobsCount;
+    length: LengthRange;
   };
   metadata: {
-    currentVersion?: number;
+    currentVersion?: number | null;
+    currentVersionDecimal?: string | null;
     orgId: number;
   };
 }
@@ -80,6 +82,7 @@ async function buildPipelineRequest(params: PipelineSubmissionParams, sourceType
       userId: authUser.userId,
       orgId: params.metadata.orgId.toString(),
       currentVersion: params.metadata.currentVersion || null,
+      currentVersionDecimal: params.metadata.currentVersionDecimal || null,
     },
     slug: params.slug,
     headline: params.headline || "",
@@ -104,6 +107,7 @@ async function buildPipelineRequest(params: PipelineSubmissionParams, sourceType
         number: index + 1,
         accredit: source.accredit,
         text: source.sourceText,
+        url: source.url,
         useVerbatim: source.verbatim,
         isPrimarySource: source.primary,
         isBaseSource: source.base, // First source is base source

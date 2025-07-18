@@ -19,7 +19,7 @@ import { redirect, permanentRedirect } from "next/navigation";
 import { after } from "next/server";
 
 // Local Database ----
-import { createArticleRecord, updateArticleStatus, getArticleById } from "@/db/dal";
+import { createAiArticleRecord, updateArticleStatus, getArticleById } from "@/db/dal";
 
 // Local Pipeline ----
 import { executePipelineByArticleId } from "./orchestrate";
@@ -65,7 +65,7 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
     console.log(`🧹 Slug cleaned: "${originalSlug}" -> "${cleanedSlug}"`);
 
     // Convert sources to the format expected by createArticleRecord
-    let sources: { description: string; accredit: string; sourceText: string; verbatim: boolean; primary: boolean }[];
+    let sources: { description: string; accredit: string; sourceText: string; url: string; verbatim: boolean; primary: boolean }[];
 
     if (sourceType === "single") {
       console.log("🚀 createArticleFromRequest - single source mode");
@@ -76,6 +76,7 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
           description: request.source.description,
           accredit: request.source.accredit,
           sourceText: request.source.sourceText,
+          url: request.source.url, // Add URL field
           verbatim: request.source.verbatim,
           primary: request.source.primary,
         },
@@ -88,6 +89,7 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
         description: "", // Source interface doesn't have description, so use empty string
         accredit: source.accredit,
         sourceText: source.text,
+        url: source.url, // Add URL field
         verbatim: source.useVerbatim,
         primary: source.isPrimarySource,
       }));
@@ -106,7 +108,7 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
 
     console.log("The source type is: ", cleanedRequest.sourceType);
     // Create article record
-    article = await createArticleRecord(cleanedRequest);
+    article = await createAiArticleRecord(cleanedRequest);
 
     console.log(`✅ Article created with source type: ${sourceType} and ID: ${article.id}`);
   } catch (error) {
