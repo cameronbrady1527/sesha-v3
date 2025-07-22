@@ -13,9 +13,9 @@
 
 import { db } from "./index";
 
-import { users, articles, organizations, presets } from "./schema";
+import { users, articles, organizations, presets, runs } from "./schema";
 
-import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, BlobsCount, LengthRange } from "./schema";
+import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, NewRun, Run, BlobsCount, LengthRange } from "./schema";
 
 import { eq, and, sql, desc } from "drizzle-orm";
 
@@ -212,7 +212,7 @@ export async function getArticleVersionsMetadata(articleId: string): Promise<Art
     })
     .from(articles)
     .where(eq(articles.id, articleId))
-    .orderBy(articles.versionDecimal);
+    .orderBy(articles.version);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -239,8 +239,8 @@ export async function getArticleByOrgSlugVersion(
     const [latestArticle] = await db
       .select()
       .from(articles)
-             .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug)))
-       .orderBy(desc(articles.versionDecimal))
+      .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug)))
+      .orderBy(desc(articles.versionDecimal))
       .limit(1);
     
     return latestArticle || null;
@@ -406,7 +406,41 @@ export async function getOrgPresets(orgId: number): Promise<Preset[]> {
   return db.select().from(presets).where(eq(presets.orgId, orgId));
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Run helpers                                                               */
+/* -------------------------------------------------------------------------- */
 
+/**
+ * Create a new run (spend & usage event).
+ *
+ * @param payload - Partial run record. `id` and `createdAt` are auto-filled.
+ * @returns Inserted run row.
+ */
+export async function createRun(payload: Omit<NewRun, "id" | "createdAt">): Promise<Run> {
+  const [row] = await db.insert(runs).values(payload).returning();
+  return row;
+}
+
+/**
+ * Update cost and tokens used for a run by run ID.
+ * @param runId - The run's UUID
+ * @param costUsd - The cost in USD
+ * @param inputTokensUsed - The number of input tokens used
+ * @param outputTokensUsed - The number of output tokens used
+ * @returns The updated run row or null if not found
+ */
+export async function updateRun(runId: string, costUsd: number, inputTokensUsed: number, outputTokensUsed: number): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set({ 
+      costUsd: costUsd.toString(), 
+      inputTokensUsed, 
+      outputTokensUsed 
+    })
+    .where(eq(runs.id, runId))
+    .returning();
+  return row || null;
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Pipeline Database Operations                                              */
@@ -469,8 +503,20 @@ export async function createAiArticleRecord(payload: {
       .limit(1)
       .for("update"); // This locks the row(s) until transaction commits
 
-    const nextVersion = (currentHighest?.version || 0) + 1;
-    const nextVersionDecimal = `${nextVersion}.00`; // AI versions always end in .00
+    // Calculate next version based on the highest decimal version
+    let nextVersion: number;
+    let nextVersionDecimal: string;
+    
+    if (currentHighest) {
+      const currentDecimal = parseFloat(currentHighest.versionDecimal);
+      const currentMajor = Math.floor(currentDecimal);
+      nextVersion = currentMajor + 1;
+      nextVersionDecimal = `${nextVersion}.00`; // AI versions always end in .00
+    } else {
+      // No existing articles, start with version 1.00
+      nextVersion = 1;
+      nextVersionDecimal = "1.00";
+    }
 
     // Prepare source data for all 6 possible sources
     const sourceData = {
