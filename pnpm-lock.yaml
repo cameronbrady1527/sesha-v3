@@ -158,9 +158,12 @@ importers:
       drizzle-orm:
         specifier: ^0.44.2
         version: 0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(postgres@3.4.7)
+      encoding:
+        specifier: ^0.1.13
+        version: 0.1.13
       html-to-docx:
         specifier: ^1.8.0
-        version: 1.8.0
+        version: 1.8.0(encoding@0.1.13)
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -2683,6 +2686,9 @@ packages:
 
   encoding-sniffer@0.2.1:
     resolution: {integrity: sha512-5gvq20T6vfpekVtqrYQsSCFZ1wEg5+wW0/QaZMWkFr6BqD3NfKs0rLCx4rrVlSWJeZb5NBJgVLswK/w2MWU+Gw==}
+
+  encoding@0.1.13:
+    resolution: {integrity: sha512-ETBauow1T35Y/WZMkio9jiM0Z5xjHHmJ4XmjZOq1l/dXz3lr2sRn87nJy20RupqSh1F2m3HHPSp8ShIPQJrJ3A==}
 
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
@@ -6846,6 +6852,10 @@ snapshots:
       iconv-lite: 0.6.3
       whatwg-encoding: 3.1.1
 
+  encoding@0.1.13:
+    dependencies:
+      iconv-lite: 0.6.3
+
   end-of-stream@1.4.5:
     dependencies:
       once: 1.4.0
@@ -7466,7 +7476,7 @@ snapshots:
 
   html-entities@2.6.0: {}
 
-  html-to-docx@1.8.0:
+  html-to-docx@1.8.0(encoding@0.1.13):
     dependencies:
       '@oozcitak/dom': 1.15.6
       '@oozcitak/util': 8.3.4
@@ -7474,7 +7484,7 @@ snapshots:
       html-entities: 2.6.0
       html-to-vdom: 0.7.0
       image-size: 1.2.1
-      image-to-base64: 2.2.0
+      image-to-base64: 2.2.0(encoding@0.1.13)
       jszip: 3.10.1
       lodash: 4.17.21
       mime-types: 2.1.35
@@ -7546,9 +7556,9 @@ snapshots:
     dependencies:
       queue: 6.0.2
 
-  image-to-base64@2.2.0:
+  image-to-base64@2.2.0(encoding@0.1.13):
     dependencies:
-      node-fetch: 2.7.0
+      node-fetch: 2.7.0(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
@@ -7999,9 +8009,11 @@ snapshots:
   node-addon-api@7.1.1:
     optional: true
 
-  node-fetch@2.7.0:
+  node-fetch@2.7.0(encoding@0.1.13):
     dependencies:
       whatwg-url: 5.0.0
+    optionalDependencies:
+      encoding: 0.1.13
 
   nth-check@2.1.1:
     dependencies:

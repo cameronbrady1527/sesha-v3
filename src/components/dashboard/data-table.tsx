@@ -56,7 +56,7 @@ interface DashboardDataTableProps {
     avgCostPerRun: number;
   };
   /** Optional filters for future use */
-  filters?: any;
+  filters?: unknown;
   /** Optional users for future use */
   users?: Array<{ id: string; name: string }>;
   /** Date range filter handlers */

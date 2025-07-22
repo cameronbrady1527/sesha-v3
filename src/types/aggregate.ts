@@ -162,7 +162,7 @@ export interface Step03HeadlinesBlobsAIResponse {
     inputTokens: number;
     outputTokens: number;
     model: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }[];
 }
 
@@ -346,6 +346,6 @@ export interface AggregateSource extends Source {
     inputTokens: number;
     outputTokens: number;
     model: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }>;
 }

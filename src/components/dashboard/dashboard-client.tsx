@@ -19,6 +19,14 @@ import { getOrgSummariesAction, getOrgUsersAction, RunFilters } from "@/actions/
 import { DashboardFilters } from "./filters";
 import { DashboardDataTable } from "./data-table";
 import type { LengthRange } from "@/db/schema";
+// OrgSummary type for dashboard summaries
+export type OrgSummary = {
+  orgId: number;
+  organizationName: string;
+  totalRuns: number;
+  totalCostUsd: number;
+  avgCostPerRun: number;
+};
 
 /* ==========================================================================*/
 // Types
@@ -46,8 +54,8 @@ export function DashboardClient({ orgName, orgId }: DashboardClientProps) {
   // ----------------------------- State -----------------------------------
   const [filters, setFilters] = React.useState<RunFilters>({ timeRange: "all" });
   const [pendingFilters, setPendingFilters] = React.useState<RunFilters>({ timeRange: "all" });
-  const [summaries, setSummaries] = React.useState<any[]>([]); // TODO: Replace any with OrgSummary type
-  const [users, setUsers] = React.useState<any[]>([]); // TODO: Replace any with User
+  const [summaries, setSummaries] = React.useState<OrgSummary[]>([]); // Use OrgSummary type
+  const [users, setUsers] = React.useState<{id: string; name: string; email: string}[]>([]); // Use User type
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -56,8 +64,10 @@ export function DashboardClient({ orgName, orgId }: DashboardClientProps) {
     async function fetchOrgUsers() {
       try {
         const orgUsers = await getOrgUsersAction(orgId);
-        setUsers(orgUsers);
-      } catch (err: any) {
+        // Local type for raw user objects returned from getOrgUsersAction
+        type RawUser = { id: string | number; name: string | null; email: string };
+        setUsers(orgUsers.map((u: RawUser) => ({ id: String(u.id), name: u.name ?? u.email ?? "", email: u.email }))); // Ensure id and name are string
+      } catch {
         setError("Failed to load users for this organization.");
       }
     }
@@ -72,7 +82,7 @@ export function DashboardClient({ orgName, orgId }: DashboardClientProps) {
       // Fetch org summaries for the current org only
       const summariesData = await getOrgSummariesAction({ ...filters, orgId });
       setSummaries(summariesData);
-    } catch (err) {
+    } catch {
       setError("Failed to load dashboard data.");
     } finally {
       setLoading(false);
@@ -97,6 +107,20 @@ export function DashboardClient({ orgName, orgId }: DashboardClientProps) {
     setFilters(newFilters);
     setPendingFilters(newFilters); // sync UI with applied filters
   }
+
+  // Map OrgSummary to DashboardRowData for the data table
+  const dashboardRows = summaries.map((summary) => ({
+    organizationName: summary.organizationName,
+    totalRuns: summary.totalRuns,
+    totalCost: summary.totalCostUsd,
+    averageCostPerRun: summary.avgCostPerRun,
+  }));
+
+  // Map User[] to {id, name}[] for the users prop
+  const userOptions = users.map((user) => ({
+    id: user.id,
+    name: user.name ?? user.email ?? "",
+  }));
 
   // ----------------------------- Render ----------------------------------
   if (loading) {
@@ -133,8 +157,8 @@ export function DashboardClient({ orgName, orgId }: DashboardClientProps) {
       )}
       {/* Data Table Section --- */}
       <DashboardDataTable
-        data={summaries}
-        users={users}
+        data={dashboardRows}
+        users={userOptions}
       />
     </div>
   );

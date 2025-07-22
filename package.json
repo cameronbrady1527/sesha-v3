@@ -69,6 +69,7 @@
     "docx": "^9.5.1",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.44.2",
+    "encoding": "^0.1.13",
     "html-to-docx": "^1.8.0",
     "input-otp": "^1.4.2",
     "lexical": "^0.32.1",

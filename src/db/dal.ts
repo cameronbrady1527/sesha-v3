@@ -17,7 +17,7 @@ import { users, articles, organizations, presets, runs } from "./schema";
 
 import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, NewRun, Run, BlobsCount, LengthRange } from "./schema";
 
-import { eq, and, sql, desc, avg, gte, lte } from "drizzle-orm";
+import { eq, and, sql, desc, gte } from "drizzle-orm";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
