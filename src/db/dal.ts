@@ -570,9 +570,13 @@ export async function getOrgSummariesWithFilters(filters: {
   userId?: string;
   length?: string;
   sourceType?: "single" | "multi";
+  orgId?: number;
 }) {
   // Build filter conditions
   const conditions = [];
+  if (filters.orgId) {
+    conditions.push(eq(organizations.id, filters.orgId));
+  }
   if (filters.userId) conditions.push(eq(runs.userId, filters.userId));
   if (filters.length) {
     const validLengths: LengthRange[] = ["100-250", "400-550", "700-850", "1000-1200"];
