@@ -23,8 +23,8 @@ import { Button } from "@/components/ui/button";
 export interface DashboardRowData {
   organizationName: string;
   totalRuns: number;
-  totalCost: number;
-  averageCostPerRun: number;
+  totalCostUsd: number;
+  avgCostPerRun: number;
 }
 
 /* ==========================================================================*/

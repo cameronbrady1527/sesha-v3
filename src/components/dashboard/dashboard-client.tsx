@@ -112,8 +112,8 @@ export function DashboardClient({ orgName, orgId }: DashboardClientProps) {
   const dashboardRows = summaries.map((summary) => ({
     organizationName: summary.organizationName,
     totalRuns: summary.totalRuns,
-    totalCost: summary.totalCostUsd,
-    averageCostPerRun: summary.avgCostPerRun,
+    totalCostUsd: summary.totalCostUsd, // match column accessorKey
+    avgCostPerRun: summary.avgCostPerRun, // match column accessorKey and type
   }));
 
   // Map User[] to {id, name}[] for the users prop
