@@ -1,5 +1,5 @@
 import { DashboardDataTable } from "@/components/dashboard/data-table";
-import { getOrgSpendSummary, getOrganization } from "@/db/dal";
+import { getOrganization } from "@/db/dal";
 import { getAuthenticatedUserServer } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -28,16 +28,16 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const spendSummary = await getOrgSpendSummary(user.orgId);
+  // const spendSummary = await getOrgSpendSummary(user.orgId);
   const organization = await getOrganization(user.orgId);
 
   // Transform data to match DashboardRowData interface
   const dashboardData: DashboardRowData[] = [
     {
       organizationName: organization?.name || "Unknown Organization",
-      totalRuns: spendSummary.totalRuns,
-      totalCost: spendSummary.totalCostUsd,
-      averageCostPerRun: spendSummary.avgCostPerRun,
+      totalRuns: 0,
+      totalCost: 0,
+      averageCostPerRun: 0,
     },
   ];
 

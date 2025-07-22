@@ -1,0 +1,1 @@
+ALTER TABLE "articles" ADD COLUMN "input_preset_title" varchar(255) DEFAULT '';

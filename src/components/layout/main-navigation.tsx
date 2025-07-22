@@ -1,7 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Newspaper, Library } from "lucide-react";
+import {
+  LayoutDashboard,
+  Newspaper,
+  Library,
+  // Layers
+} from "lucide-react";
 import Link from "next/link";
 
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
@@ -28,6 +33,11 @@ export function MainNavigation() {
       url: "/digest",
       icon: Newspaper,
     },
+    // {
+    //   title: "Aggregator",
+    //   url: "/aggregator",
+    //   icon: Layers,
+    // },
     {
       title: "Library",
       url: "/library",
@@ -40,8 +50,8 @@ export function MainNavigation() {
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url || pathname.startsWith(item.url + '/');
-          
+          const isActive = pathname === item.url || pathname.startsWith(item.url + "/");
+
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>

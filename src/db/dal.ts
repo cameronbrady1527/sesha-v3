@@ -13,9 +13,9 @@
 
 import { db } from "./index";
 
-import { users, articles, runs, organizations, presets } from "./schema";
+import { users, articles, organizations, presets } from "./schema";
 
-import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, BlobsCount, LengthRange } from "./schema";
+import type { NewUser, User, Preset, Article, ArticleStatus, RunType, Organization, NewPreset, BlobsCount, LengthRange , SourceType} from "./schema";
 
 import { eq, and, sql, desc } from "drizzle-orm";
 
@@ -32,6 +32,7 @@ export interface ArticleMetadata {
   createdByName: string;
   slug: string;
   headline: string | null;
+  sourceType: string;
   status: ArticleStatus;
 }
 
@@ -41,6 +42,7 @@ export interface ArticleVersionMetadata {
   slug: string | null;
   headline: string | null;
   createdAt: Date;
+  blobOutline: string | null;
 }
 
 /** Raw run row shape returned by `getOrgRuns()` */
@@ -130,6 +132,7 @@ export async function getArticleMetadata(articleId: string): Promise<ArticleMeta
       `.as("createdByName"),
       slug: articles.slug,
       headline: articles.headline,
+      sourceType: articles.sourceType,
       status: articles.status,
     })
     .from(articles)
@@ -164,6 +167,7 @@ export async function getOrgArticlesMetadataPaginated(orgId: number, limit = 50,
       `.as("createdByName"),
       slug: articles.slug,
       headline: articles.headline,
+      sourceType: articles.sourceType,
       status: articles.status,
     })
     .from(articles)
@@ -199,6 +203,7 @@ export async function getArticleVersionsMetadata(articleId: string): Promise<Art
       slug: articles.slug,
       headline: articles.headline,
       createdAt: articles.createdAt,
+      blobOutline: articles.blob,
     })
     .from(articles)
     .where(eq(articles.id, articleId))
@@ -241,13 +246,50 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
       headline: articles.headline,
       blob: articles.blob,
       content: articles.content,
-      // sentences: articles.sentences,
-      changeDescription: articles.changeDescription,
-      inputSourceText: articles.inputSourceText,
-      inputSourceDescription: articles.inputSourceDescription,
-      inputSourceAccredit: articles.inputSourceAccredit,
-      inputSourceVerbatim: articles.inputSourceVerbatim,
-      inputSourcePrimary: articles.inputSourcePrimary,
+      sourceType: articles.sourceType,
+
+      // 1st source
+      inputSourceText1: articles.inputSourceText1,
+      inputSourceDescription1: articles.inputSourceDescription1,
+      inputSourceAccredit1: articles.inputSourceAccredit1,
+      inputSourceVerbatim1: articles.inputSourceVerbatim1,
+      inputSourcePrimary1: articles.inputSourcePrimary1,
+      inputSourceBase1: articles.inputSourceBase1,
+      // 2nd source
+      inputSourceText2: articles.inputSourceText2,
+      inputSourceDescription2: articles.inputSourceDescription2,
+      inputSourceAccredit2: articles.inputSourceAccredit2,
+      inputSourceVerbatim2: articles.inputSourceVerbatim2,
+      inputSourcePrimary2: articles.inputSourcePrimary2,
+      inputSourceBase2: articles.inputSourceBase2,
+      // 3rd source
+      inputSourceText3: articles.inputSourceText3,
+      inputSourceDescription3: articles.inputSourceDescription3,
+      inputSourceAccredit3: articles.inputSourceAccredit3,
+      inputSourceVerbatim3: articles.inputSourceVerbatim3,
+      inputSourcePrimary3: articles.inputSourcePrimary3,
+      inputSourceBase3: articles.inputSourceBase3,
+      // 4th source
+      inputSourceText4: articles.inputSourceText4,
+      inputSourceDescription4: articles.inputSourceDescription4,
+      inputSourceAccredit4: articles.inputSourceAccredit4,
+      inputSourceVerbatim4: articles.inputSourceVerbatim4,
+      inputSourcePrimary4: articles.inputSourcePrimary4,
+      inputSourceBase4: articles.inputSourceBase4,
+      // 5th source
+      inputSourceText5: articles.inputSourceText5,
+      inputSourceDescription5: articles.inputSourceDescription5,
+      inputSourceAccredit5: articles.inputSourceAccredit5,
+      inputSourceVerbatim5: articles.inputSourceVerbatim5,
+      inputSourcePrimary5: articles.inputSourcePrimary5,
+      inputSourceBase5: articles.inputSourceBase5,
+      // 6th source
+      inputSourceText6: articles.inputSourceText6,
+      inputSourceDescription6: articles.inputSourceDescription6,
+      inputSourceAccredit6: articles.inputSourceAccredit6,
+      inputSourceVerbatim6: articles.inputSourceVerbatim6,
+      inputSourcePrimary6: articles.inputSourcePrimary6,
+      inputSourceBase6: articles.inputSourceBase6,  
       inputPresetTitle: articles.inputPresetTitle,
       inputPresetInstructions: articles.inputPresetInstructions,
       inputPresetBlobs: articles.inputPresetBlobs,
@@ -272,45 +314,21 @@ export async function getArticlesByOrgSlug(orgId: number, slug: string): Promise
     .orderBy(desc(articles.version));
 }
 
-/* ==========================================================================*/
-// Runs & Spend (no filters)
-/* ==========================================================================*/
+/**
+ * Fetch a complete article record by its ID.
+ * Returns the full article with all source data for pipeline processing.
+ * 
+ * @param articleId - The article UUID
+ * @returns Article record or null if not found
+ */
+export async function getArticleById(articleId: string): Promise<Article | null> {
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.id, articleId))
+    .limit(1);
 
-/** All run rows for an organisation — let the UI filter/group as needed. */
-export async function getOrgRuns(orgId: number): Promise<RunRow[]> {
-  return db
-    .select({
-      id: runs.id,
-      articleId: runs.articleId,
-      userId: runs.userId,
-      runType: runs.runType,
-      length: runs.length,
-      costUsd: sql<number>`${runs.costUsd}::numeric`.as("costUsd"),
-      tokensUsed: runs.tokensUsed,
-      createdAt: runs.createdAt,
-    })
-    .from(runs)
-    .innerJoin(articles, eq(runs.articleId, articles.id))
-    .where(eq(articles.orgId, orgId));
-}
-
-/** Simple spend summary for an organisation (no extra filters). */
-export async function getOrgSpendSummary(orgId: number): Promise<SpendSummary> {
-  const [row] = await db
-    .select({
-      totalRuns: sql<number>`count(*)`,
-      totalCostUsd: sql<number>`coalesce(sum(${runs.costUsd}), 0)`,
-      avgCostPerRun: sql<number>`coalesce(avg(${runs.costUsd}), 0)`,
-    })
-    .from(runs)
-    .innerJoin(articles, eq(runs.articleId, articles.id))
-    .where(eq(articles.orgId, orgId));
-
-  return {
-    totalRuns: row?.totalRuns ?? 0,
-    totalCostUsd: Number(row?.totalCostUsd ?? 0),
-    avgCostPerRun: Number(row?.avgCostPerRun ?? 0),
-  };
+  return article || null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -356,31 +374,7 @@ export async function getOrgPresets(orgId: number): Promise<Preset[]> {
   return db.select().from(presets).where(eq(presets.orgId, orgId));
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Article Inputs helpers                                                    */
-/* -------------------------------------------------------------------------- */
 
-/**
- * Fetch article inputs by organization, slug, and version.
- * This returns the original form data used to create the article version.
- *
- * @param orgId - Organization ID
- * @param slug - Article slug
- * @param version - Version number (defaults to current version if not provided)
- * @returns Article's input fields or null if not found
- */
-export async function getArticleInputsByOrgSlugVersion(orgId: number, slug: string, version?: number): Promise<Partial<Article> | null> {
-  // 1) Find the article row first
-  const [article] = await db
-    .select()
-    .from(articles)
-    .where(and(eq(articles.orgId, orgId), eq(articles.slug, slug), eq(articles.version, version ?? 1)))
-    .limit(1);
-
-  if (!article) return null;
-
-  return article;
-}
 
 /* -------------------------------------------------------------------------- */
 /*  Pipeline Database Operations                                              */
@@ -399,16 +393,17 @@ export async function createArticleRecord(payload: {
     userId: string;
     orgId: string;
     currentVersion: number | null;
+    sourceType?: SourceType;
   };
   slug: string;
   headline: string;
-  source: {
+  sources: Array<{
     description: string;
     accredit: string;
     sourceText: string;
     verbatim: boolean;
     primary: boolean;
-  };
+  }>;
   instructions: {
     instructions: string;
     blobs: BlobsCount;
@@ -416,6 +411,18 @@ export async function createArticleRecord(payload: {
   };
 }): Promise<Article> {
   const orgId = parseInt(payload.metadata.orgId);
+
+  const sourceType = (payload.metadata.sourceType as "single" | "multi") || "single";
+
+  // Validate that we have at least one source
+  if (!payload.sources || payload.sources.length === 0) {
+    throw new Error("At least one source is required");
+  }
+
+  // Validate that we don't have more than 6 sources
+  if (payload.sources.length > 6) {
+    throw new Error("Maximum of 6 sources allowed");
+  }
 
   return await db.transaction(async (tx) => {
     // Lock and get the current highest version for this slug
@@ -429,6 +436,51 @@ export async function createArticleRecord(payload: {
 
     const nextVersion = (currentHighest?.version || 0) + 1;
 
+    // Prepare source data for all 6 possible sources
+    const sourceData = {
+      // Source 1 (required)
+      inputSourceText1: payload.sources[0].sourceText,
+      inputSourceDescription1: payload.sources[0].description,
+      inputSourceAccredit1: payload.sources[0].accredit,
+      inputSourceVerbatim1: payload.sources[0].verbatim,
+      inputSourcePrimary1: payload.sources[0].primary,
+
+      // Source 2 (optional)
+      inputSourceText2: payload.sources[1]?.sourceText || null,
+      inputSourceDescription2: payload.sources[1]?.description || "",
+      inputSourceAccredit2: payload.sources[1]?.accredit || "",
+      inputSourceVerbatim2: payload.sources[1]?.verbatim || false,
+      inputSourcePrimary2: payload.sources[1]?.primary || false,
+
+      // Source 3 (optional)
+      inputSourceText3: payload.sources[2]?.sourceText || null,
+      inputSourceDescription3: payload.sources[2]?.description || "",
+      inputSourceAccredit3: payload.sources[2]?.accredit || "",
+      inputSourceVerbatim3: payload.sources[2]?.verbatim || false,
+      inputSourcePrimary3: payload.sources[2]?.primary || false,
+
+      // Source 4 (optional)
+      inputSourceText4: payload.sources[3]?.sourceText || null,
+      inputSourceDescription4: payload.sources[3]?.description || "",
+      inputSourceAccredit4: payload.sources[3]?.accredit || "",
+      inputSourceVerbatim4: payload.sources[3]?.verbatim || false,
+      inputSourcePrimary4: payload.sources[3]?.primary || false,
+
+      // Source 5 (optional)
+      inputSourceText5: payload.sources[4]?.sourceText || null,
+      inputSourceDescription5: payload.sources[4]?.description || "",
+      inputSourceAccredit5: payload.sources[4]?.accredit || "",
+      inputSourceVerbatim5: payload.sources[4]?.verbatim || false,
+      inputSourcePrimary5: payload.sources[4]?.primary || false,
+
+      // Source 6 (optional)
+      inputSourceText6: payload.sources[5]?.sourceText || null,
+      inputSourceDescription6: payload.sources[5]?.description || "",
+      inputSourceAccredit6: payload.sources[5]?.accredit || "",
+      inputSourceVerbatim6: payload.sources[5]?.verbatim || false,
+      inputSourcePrimary6: payload.sources[5]?.primary || false,
+    };
+
     // Now create the new article with the calculated version
     const [article] = await tx
       .insert(articles)
@@ -437,14 +489,12 @@ export async function createArticleRecord(payload: {
         slug: payload.slug,
         version: nextVersion,
         headline: payload.headline,
-        status: "10%",
+        status: "pending",
+        sourceType: sourceType,
 
-        // Input snapshot fields
-        inputSourceText: payload.source.sourceText,
-        inputSourceDescription: payload.source.description,
-        inputSourceAccredit: payload.source.accredit,
-        inputSourceVerbatim: payload.source.verbatim,
-        inputSourcePrimary: payload.source.primary,
+        // Input snapshot fields - all sources
+        ...sourceData,
+
         inputPresetInstructions: payload.instructions.instructions,
         inputPresetBlobs: payload.instructions.blobs,
         inputPresetLength: payload.instructions.length,

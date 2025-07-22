@@ -11,10 +11,10 @@
 /* ==========================================================================*/
 
 // React core ---
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Lexical core ---
-import { SerializedEditorState } from "lexical";
+import { SerializedEditorState, $getRoot, $createParagraphNode, $createTextNode } from "lexical";
 import {
   InitialConfigType,
   LexicalComposer,
@@ -24,6 +24,7 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { ParagraphNode, TextNode } from "lexical";
@@ -46,6 +47,10 @@ import { ToolbarContext } from "@/components/editor/context/toolbar-context";
 import { editorTheme } from "@/components/editor/themes/editor-theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+
+// Icons ---
+import { Maximize2, Minimize2 } from "lucide-react";
 
 /* ==========================================================================*/
 // Types
@@ -53,6 +58,9 @@ import { Separator } from "@/components/ui/separator";
 
 interface TextEditorProps {
   initialContent?: SerializedEditorState;
+  content?: string;
+  onChange?: (content: string) => void;
+  placeholder?: string;
 }
 
 /* ==========================================================================*/
@@ -69,6 +77,42 @@ const editorConfig: InitialConfigType = {
 };
 
 /* ==========================================================================*/
+// Helper Components
+/* ==========================================================================*/
+
+/**
+ * ContentUpdatePlugin
+ * 
+ * Plugin to update editor content when the content prop changes
+ */
+function ContentUpdatePlugin({ content }: { content?: string }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    if (content !== undefined) {
+      editor.update(() => {
+        const root = $getRoot();
+        const currentText = root.getTextContent();
+        
+        // Only update if content has actually changed
+        if (currentText !== content) {
+          root.clear();
+          
+          if (content.trim()) {
+            const paragraph = $createParagraphNode();
+            const textNode = $createTextNode(content);
+            paragraph.append(textNode);
+            root.append(paragraph);
+          }
+        }
+      });
+    }
+  }, [content, editor]);
+
+  return null;
+}
+
+/* ==========================================================================*/
 // Components
 /* ==========================================================================*/
 
@@ -77,7 +121,7 @@ const editorConfig: InitialConfigType = {
  *
  * Component that renders the fixed toolbar with all formatting options
  */
-function ToolbarPlugins() {
+function ToolbarPlugins({ expanded, onExpandToggle }: { expanded: boolean; onExpandToggle: () => void }) {
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-background p-2">
       {/* Block Format */}
@@ -108,6 +152,20 @@ function ToolbarPlugins() {
         <FontColorToolbarPlugin />
         <FontBackgroundToolbarPlugin />
       </div>
+      
+      <Separator orientation="vertical" className="mx-2 h-6" />
+      
+      {/* Expand/Minimize Button */}
+      <div className="flex items-center gap-1 ml-auto">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onExpandToggle}
+          className="h-8 w-8 p-0"
+        >
+          {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -117,7 +175,19 @@ function ToolbarPlugins() {
  *
  * Component that manages all editor plugins including floating toolbar
  */
-function EditorPlugins() {
+function EditorPlugins({ 
+  onChange, 
+  placeholder, 
+  expanded, 
+  onExpandToggle,
+  content 
+}: { 
+  onChange?: (content: string) => void; 
+  placeholder?: string; 
+  expanded: boolean;
+  onExpandToggle: () => void;
+  content?: string;
+}) {
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
 
   const onRef = (_floatingAnchorElem: HTMLDivElement) => {
@@ -129,23 +199,45 @@ function EditorPlugins() {
   return (
     <div className="relative">
       {/* Fixed Toolbar */}
-      <ToolbarPlugins />
+      <ToolbarPlugins expanded={expanded} onExpandToggle={onExpandToggle} />
 
       {/* Editor Content */}
-      <div className="relative">
+      <div className={`relative transition-all duration-200 ${
+        expanded ? "min-h-fit" : "min-h-[400px] max-h-[400px] overflow-y-auto"
+      }`}>
         <RichTextPlugin
           contentEditable={
-            <div className="relative">
-              <div ref={onRef}>
+            <div className="relative h-full">
+              <div ref={onRef} className="h-full">
                 <ContentEditable
-                  placeholder="Start typing..."
-                  className="ContentEditable__root relative block min-h-[300px] overflow-auto px-6 py-4 focus:outline-none"
+                  placeholder={placeholder || "Start typing..."}
+                  className={`ContentEditable__root relative block px-6 py-4 focus:outline-none ${
+                    expanded 
+                      ? "min-h-[300px]" 
+                      : "min-h-full"
+                  }`}
                 />
               </div>
             </div>
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
+        
+        {/* Content Update Plugin */}
+        <ContentUpdatePlugin content={content} />
+        
+        {/* OnChange Plugin */}
+        {onChange && (
+          <OnChangePlugin
+            onChange={(editorState) => {
+              editorState.read(() => {
+                // Get the text content using Lexical's built-in method
+                const textContent = $getRoot().getTextContent();
+                onChange(textContent);
+              });
+            }}
+          />
+        )}
         
         {/* Additional Plugins */}
         <TabIndentationPlugin />
@@ -166,7 +258,19 @@ function EditorPlugins() {
  *
  * Inner component that has access to the Lexical editor context
  */
-function TextEditorInner() {
+function TextEditorInner({ 
+  onChange, 
+  placeholder, 
+  expanded, 
+  onExpandToggle,
+  content 
+}: { 
+  onChange?: (content: string) => void; 
+  placeholder?: string; 
+  expanded: boolean;
+  onExpandToggle: () => void;
+  content?: string;
+}) {
   const [editor] = useLexicalComposerContext();
   const [blockType, setBlockType] = useState("paragraph");
 
@@ -190,7 +294,13 @@ function TextEditorInner() {
       setBlockType={setBlockType}
       showModal={showModal}
     >
-      <EditorPlugins />
+      <EditorPlugins 
+        onChange={onChange} 
+        placeholder={placeholder} 
+        expanded={expanded} 
+        onExpandToggle={onExpandToggle} 
+        content={content}
+      />
     </ToolbarContext>
   );
 }
@@ -200,48 +310,67 @@ function TextEditorInner() {
  *
  * Enhanced rich text editor with comprehensive toolbar functionality
  */
-function TextEditor({ initialContent }: TextEditorProps = {}) {
-  // Use provided initial content or fall back to default
-  const editorInitialValue = initialContent || {
-    root: {
-      children: [
-        {
-          children: [
-            {
-              detail: 0,
-              format: 0,
-              mode: "normal",
-              style: "",
-              text: "Start typing with rich formatting...",
-              type: "text",
-              version: 1,
-            },
-          ],
-          direction: "ltr",
-          format: "",
-          indent: 0,
-          type: "paragraph",
-          version: 1,
-        },
-      ],
-      direction: "ltr",
-      format: "",
-      indent: 0,
-      type: "root",
-      version: 1,
-    },
-  } as unknown as SerializedEditorState;
+function TextEditor({ initialContent, content, onChange, placeholder = "Start typing..." }: TextEditorProps = {}) {
+  const [expanded, setExpanded] = useState(false);
+  
+  const handleExpandToggle = () => setExpanded((prev) => !prev);
+  
+  // Create initial editor state
+  let editorInitialValue: string | undefined;
+  
+  if (initialContent) {
+    editorInitialValue = JSON.stringify(initialContent);
+  } else if (content && content.trim()) {
+    // Create a simple paragraph with the text content
+    const simpleState = {
+      root: {
+        children: [
+          {
+            children: [
+              {
+                detail: 0,
+                format: 0,
+                mode: "normal",
+                style: "",
+                text: content,
+                type: "text",
+                version: 1,
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            type: "paragraph",
+            version: 1,
+          },
+        ],
+        direction: "ltr",
+        format: "",
+        indent: 0,
+        type: "root",
+        version: 1,
+      },
+    };
+    editorInitialValue = JSON.stringify(simpleState);
+  }
+  // If no content provided, let Lexical use its default empty state
 
   return (
     <div className="w-full overflow-hidden rounded-lg border bg-background shadow-sm">
       <LexicalComposer
         initialConfig={{
           ...editorConfig,
-          editorState: JSON.stringify(editorInitialValue),
+          editorState: editorInitialValue,
         }}
       >
         <TooltipProvider>
-          <TextEditorInner />
+          <TextEditorInner 
+            onChange={onChange} 
+            placeholder={placeholder} 
+            expanded={expanded} 
+            onExpandToggle={handleExpandToggle} 
+            content={content}
+          />
         </TooltipProvider>
       </LexicalComposer>
     </div>

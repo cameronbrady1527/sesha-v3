@@ -1,17 +1,85 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import Mustache from "mustache";
+import { NextResponse } from "next/server";
 
 // Local Types ----
-// import { ApiResponse } from '@/types/api'
+import type { Article } from "@/db/schema";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /* ==========================================================================*/
+// Route Validation Helpers
+/* ==========================================================================*/
+
+/**
+ * Validate request body and return error response if invalid
+ *
+ * @param isValid - Boolean indicating if validation passed
+ * @param errorResponse - Object to return if validation fails
+ * @returns NextResponse with 400 status if invalid, null if valid
+ */
+export function validateRequest<T>(
+  isValid: boolean,
+  errorResponse: T
+): NextResponse<T> | null {
+  if (!isValid) {
+    return NextResponse.json(errorResponse, { status: 400 });
+  }
+  return null;
+}
+
+/* ==========================================================================*/
 // Prompt Building Helpers
 /* ==========================================================================*/
+
+/**
+ * Enum for prompt types
+ */
+export enum PromptType {
+  SYSTEM = "system",
+  USER = "user", 
+  ASSISTANT = "assistant"
+}
+
+/**
+ * Format a prompt template with the given variables using Mustache templating (v2)
+ *
+ * @param promptTemplate - The template string with {{variable}} placeholders
+ * @param variables - Object containing variable values
+ * @param type - The type of prompt (for logging purposes)
+ * @returns Formatted prompt string
+ */
+export function formatPrompt2(
+  promptTemplate: string, 
+  variables?: Record<string, unknown>,
+  type: PromptType = PromptType.SYSTEM
+): string {
+  console.log(`🔧 formatPrompt2 [${type}] - STARTING`);
+
+  if (!variables) {
+    console.log(`⚠️ formatPrompt2 [${type}] - No variables provided, returning template as-is`);
+    return promptTemplate;
+  }
+
+  try {
+    console.log(`🔄 formatPrompt2 [${type}] - Processing template with Mustache...`);
+    
+    // Use Mustache to render the template with variables
+    const formatted = Mustache.render(promptTemplate, variables);
+    
+    console.log(`✅ formatPrompt2 [${type}] - COMPLETED`);
+    return formatted;
+  } catch (error) {
+    console.error(`❌ formatPrompt2 [${type}] - ERROR:`, error);
+    console.error(`🔍 formatPrompt2 [${type}] - Error details:`, JSON.stringify(error, null, 2));
+    console.error(`📊 formatPrompt2 [${type}] - Template at error:`, promptTemplate.substring(0, 500));
+    console.error(`📊 formatPrompt2 [${type}] - Variables at error:`, JSON.stringify(variables, null, 2));
+    throw error;
+  }
+}
 
 /**
  * Format a prompt template with the given variables using Mustache templating
@@ -52,12 +120,22 @@ function formatPrompt(promptTemplate: string, variables?: Record<string, unknown
  * @param userPromptTemplate - User prompt template with {{variable}} syntax
  * @param systemVariables - Variables for system prompt
  * @param userVariables - Variables for user prompt
- * @returns Tuple of [systemPrompt, userPrompt]
+ * @param assistantPromptTemplate - Assistant prompt template with {{variable}} syntax
+ * @param assistantVariables - Variables for assistant prompt
+ * @returns Tuple of [systemPrompt, userPrompt, assistantPrompt]
  */
-export function buildPrompts(systemPromptTemplate: string, userPromptTemplate: string, systemVariables?: Record<string, unknown>, userVariables?: Record<string, unknown>): [string, string] {
+export function buildPrompts(
+  systemPromptTemplate: string, 
+  userPromptTemplate: string, 
+  systemVariables?: Record<string, unknown>, 
+  userVariables?: Record<string, unknown>,
+  assistantPromptTemplate?: string,
+  assistantVariables?: Record<string, unknown>
+): [string, string, string?] {
   console.log("🏗️ buildPrompts - STARTING");
   console.log("📥 buildPrompts - System template length:", systemPromptTemplate.length);
   console.log("📥 buildPrompts - User template length:", userPromptTemplate.length);
+  console.log("📥 buildPrompts - Assistant template provided:", !!assistantPromptTemplate);
 
   try {
     console.log("🔄 buildPrompts - Building system prompt...");
@@ -66,183 +144,112 @@ export function buildPrompts(systemPromptTemplate: string, userPromptTemplate: s
     console.log("🔄 buildPrompts - Building user prompt...");
     const userPrompt = formatPrompt(userPromptTemplate, userVariables);
 
+    let assistantPrompt: string | undefined;
+    if (assistantPromptTemplate) {
+      console.log("🔄 buildPrompts - Building assistant prompt...");
+      assistantPrompt = formatPrompt(assistantPromptTemplate, assistantVariables);
+    }
+
     console.log("✅ buildPrompts - COMPLETED");
 
-    return [systemPrompt, userPrompt];
+    return [systemPrompt, userPrompt, assistantPrompt];
   } catch (error) {
     console.error("❌ buildPrompts - ERROR:", error);
     console.error("🔍 buildPrompts - Error details:", JSON.stringify(error, null, 2));
     console.error("📊 buildPrompts - System template:", systemPromptTemplate.substring(0, 200) + "...");
     console.error("📊 buildPrompts - User template:", userPromptTemplate.substring(0, 200) + "...");
+    console.error("📊 buildPrompts - Assistant template:", assistantPromptTemplate?.substring(0, 200) + "...");
     console.error("📊 buildPrompts - System variables:", JSON.stringify(systemVariables, null, 2));
     console.error("📊 buildPrompts - User variables:", JSON.stringify(userVariables, null, 2));
+    console.error("📊 buildPrompts - Assistant variables:", JSON.stringify(assistantVariables, null, 2));
     throw error;
   }
 }
 
-// /* ==========================================================================*/
-// // Lexical Editor State Helpers
-// /* ==========================================================================*/
+/* ==========================================================================*/
+// Article Helpers
+/* ==========================================================================*/
 
-// /**
-//  * Convert array of paragraph texts to Lexical SerializedEditorState format
-//  *
-//  * @param paragraphs - Array of paragraph text strings
-//  * @returns SerializedEditorState compatible object
-//  */
-// export function textToEditorState(paragraphs: string[]): SerializedEditorState {
-//   console.log('🔧 textToEditorState - STARTING')
-//   console.log('📥 textToEditorState - Input paragraphs count:', paragraphs.length)
+/**
+ * Helper function to extract sources from an article into array format
+ *
+ * @param article - The article to extract sources from
+ * @returns Array of source objects with only non-empty sources
+ */
+export function extractSourcesFromArticle(article: Article): Array<{
+  description: string;
+  accredit: string;
+  sourceText: string;
+  verbatim: boolean;
+  primary: boolean;
+}> {
+  const sources = [];
+  
+  // Explicit mapping of each source - type-safe and clear
+  const sourceMappings = [
+    {
+      text: article.inputSourceText1,
+      description: article.inputSourceDescription1,
+      accredit: article.inputSourceAccredit1,
+      verbatim: article.inputSourceVerbatim1,
+      primary: article.inputSourcePrimary1,
+    },
+    {
+      text: article.inputSourceText2,
+      description: article.inputSourceDescription2,
+      accredit: article.inputSourceAccredit2,
+      verbatim: article.inputSourceVerbatim2,
+      primary: article.inputSourcePrimary2,
+    },
+    {
+      text: article.inputSourceText3,
+      description: article.inputSourceDescription3,
+      accredit: article.inputSourceAccredit3,
+      verbatim: article.inputSourceVerbatim3,
+      primary: article.inputSourcePrimary3,
+    },
+    {
+      text: article.inputSourceText4,
+      description: article.inputSourceDescription4,
+      accredit: article.inputSourceAccredit4,
+      verbatim: article.inputSourceVerbatim4,
+      primary: article.inputSourcePrimary4,
+    },
+    {
+      text: article.inputSourceText5,
+      description: article.inputSourceDescription5,
+      accredit: article.inputSourceAccredit5,
+      verbatim: article.inputSourceVerbatim5,
+      primary: article.inputSourcePrimary5,
+    },
+    {
+      text: article.inputSourceText6,
+      description: article.inputSourceDescription6,
+      accredit: article.inputSourceAccredit6,
+      verbatim: article.inputSourceVerbatim6,
+      primary: article.inputSourcePrimary6,
+    },
+  ];
+  
+  // Only include sources that have content
+  for (const mapping of sourceMappings) {
+    if (mapping.text) {
+      sources.push({
+        description: mapping.description || '',
+        accredit: mapping.accredit || '',
+        sourceText: mapping.text,
+        verbatim: mapping.verbatim || false,
+        primary: mapping.primary || false,
+      });
+    }
+  }
+  
+  return sources;
+}
 
-//   // Handle empty array
-//   if (!paragraphs || paragraphs.length === 0) {
-//     console.log('⚠️ textToEditorState - Empty paragraphs array, returning default state')
-//     return {
-//       root: {
-//         children: [
-//           {
-//             children: [
-//               {
-//                 detail: 0,
-//                 format: 0,
-//                 mode: "normal",
-//                 style: "",
-//                 text: "",
-//                 type: "text",
-//                 version: 1,
-//               },
-//             ],
-//             direction: "ltr",
-//             format: "",
-//             indent: 0,
-//             type: "paragraph",
-//             version: 1,
-//           },
-//         ],
-//         direction: "ltr",
-//         format: "",
-//         indent: 0,
-//         type: "root",
-//         version: 1,
-//       },
-//     } as unknown as SerializedEditorState
-//   }
-
-//   try {
-//     // Filter out empty paragraphs and trim whitespace
-//     const validParagraphs = paragraphs
-//       .map(para => para?.trim() || "")
-//       .filter(para => para.length > 0)
-
-//     console.log('🔄 textToEditorState - Valid paragraphs after filtering:', validParagraphs.length)
-
-//     // If no valid paragraphs, return empty state
-//     if (validParagraphs.length === 0) {
-//       console.log('⚠️ textToEditorState - No valid paragraphs, returning empty state')
-//       return {
-//         root: {
-//           children: [
-//             {
-//               children: [
-//                 {
-//                   detail: 0,
-//                   format: 0,
-//                   mode: "normal",
-//                   style: "",
-//                   text: "",
-//                   type: "text",
-//                   version: 1,
-//                 },
-//               ],
-//               direction: "ltr",
-//               format: "",
-//               indent: 0,
-//               type: "paragraph",
-//               version: 1,
-//             },
-//           ],
-//           direction: "ltr",
-//           format: "",
-//           indent: 0,
-//           type: "root",
-//           version: 1,
-//         },
-//       } as unknown as SerializedEditorState
-//     }
-
-//     // Create paragraph nodes from each paragraph text
-//     const paragraphNodes = validParagraphs.map(paragraphText => ({
-//       children: [
-//         {
-//           detail: 0,
-//           format: 0,
-//           mode: "normal" as const,
-//           style: "",
-//           text: paragraphText,
-//           type: "text" as const,
-//           version: 1,
-//         },
-//       ],
-//       direction: "ltr" as const,
-//       format: "",
-//       indent: 0,
-//       type: "paragraph" as const,
-//       version: 1,
-//     }))
-
-//     const editorState = {
-//       root: {
-//         children: paragraphNodes,
-//         direction: "ltr" as const,
-//         format: "",
-//         indent: 0,
-//         type: "root" as const,
-//         version: 1,
-//       },
-//     } as unknown as SerializedEditorState
-
-//     console.log('✅ textToEditorState - COMPLETED')
-//     console.log('📤 textToEditorState - Generated paragraphs:', paragraphNodes.length)
-
-//     return editorState
-
-//   } catch (error) {
-//     console.error('❌ textToEditorState - ERROR:', error)
-//     console.error('🔍 textToEditorState - Input paragraphs:', paragraphs)
-
-//     // Return fallback state with first paragraph or empty
-//     const fallbackText = paragraphs[0]?.substring(0, 1000) || ""
-//     return {
-//       root: {
-//         children: [
-//           {
-//             children: [
-//               {
-//                 detail: 0,
-//                 format: 0,
-//                 mode: "normal",
-//                 style: "",
-//                 text: fallbackText,
-//                 type: "text",
-//                 version: 1,
-//               },
-//             ],
-//             direction: "ltr",
-//             format: "",
-//             indent: 0,
-//             type: "paragraph",
-//             version: 1,
-//           },
-//         ],
-//         direction: "ltr",
-//         format: "",
-//         indent: 0,
-//         type: "root",
-//         version: 1,
-//       },
-//     } as unknown as SerializedEditorState
-//   }
-// }
+/* ==========================================================================*/
+// String Helpers
+/* ==========================================================================*/
 
 /**
  * cleanSlug
@@ -270,4 +277,13 @@ export function cleanSlug(input: string): string {
     .trim() // Remove leading/trailing whitespace
     .replace(/[^a-z0-9]/g, "") // Remove everything except lowercase letters and numbers
     .substring(0, 50); // Limit length to 50 characters
+}
+
+
+// ==========================================================================
+// Date Helpers
+// ==========================================================================
+
+export function getCurrentDate(): string {
+  return new Date().toISOString().split('T')[0];
 }

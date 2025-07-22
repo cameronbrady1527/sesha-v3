@@ -1,0 +1,1 @@
+ALTER TYPE "public"."article_status" ADD VALUE 'pending' BEFORE '10%';

@@ -17,6 +17,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 
 // Local Utilities ---
 import { buildPrompts } from "@/lib/utils";
+import { createPipelineLogger } from "@/lib/pipeline-logger";
 
 // Local Types ----
 import { Step07SentencePerLineAttributionAIResponse, Step07SentencePerLineAttributionRequest } from "@/types/digest";
@@ -25,7 +26,7 @@ import { Step07SentencePerLineAttributionAIResponse, Step07SentencePerLineAttrib
 // Configuration
 /* ==========================================================================*/
 
-const model = anthropic("claude-3-opus-20240229");
+const model = anthropic("claude-3-5-sonnet-20240620");
 
 /* ==========================================================================*/
 // Schema
@@ -74,6 +75,7 @@ Nume turns 30 in November, according to CNN. (Source 1)
 </article>
 
 Example output:
+<output>
 Nume announced his return to the world of beatboxing in a video posted to Youtube on Thursday.
 
 "I'm back, baby," Nume said after a long-winded speech.
@@ -89,6 +91,7 @@ This is his second retirement in two years.
 "But I mean it this time. I really do."
 
 Nume turns 30 in November, according to CNN.
+</output>
 </example>
 `;
 
@@ -96,8 +99,6 @@ const USER_PROMPT = `
 <article>
 {{draft_text}}
 </article>
-
-DO NOT include any other text or comments in your response, or any <output> tags.
 `;
 
 /* ==========================================================================*/
@@ -128,6 +129,10 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // Create a route-specific logger for this step
+    const logger = createPipelineLogger(`route-step07-${Date.now()}`);
+    logger.logStepPrompts(7, "Sentence Per Line Attribution", systemPrompt, userPrompt);
+
     // Generate structured object using AI SDK
     const { text } = await generateText({
       model,
@@ -143,17 +148,23 @@ export async function POST(request: NextRequest) {
         },
       ],
       temperature: 0.2,
+      maxTokens: 3700
     });
 
-    // Clean up the response by removing any <output></output> tags and trimming whitespace
+    // Clean up the response by removing any <o></o> tags and trimming whitespace
     const cleanedText = text
-      .replace(/<\/?output[^>]*>/g, '') // Remove any <output> or </output> tags
+      .replace(/<\/?output[^>]*>/g, '') // Remove any <o> or </o> tags
       .trim(); // Remove leading and trailing whitespace
 
     // Build response - only AI data
     const response: Step07SentencePerLineAttributionAIResponse = {
       formattedArticle: cleanedText,
     };
+
+    logger.logStepResponse(7, "Sentence Per Line Attribution", response);
+
+    // Close the logger to ensure logs are flushed
+    await logger.close();
 
     return NextResponse.json(response);
   } catch (error) {

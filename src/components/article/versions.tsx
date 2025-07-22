@@ -20,9 +20,11 @@ import { useRouter } from "next/navigation";
 // Shadcn UI ---
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 // Local Modules ---
 import { useArticle } from "./article-context";
+import { Separator } from "@/components/ui/separator";
 
 /* ==========================================================================*/
 // Types and Interfaces
@@ -31,9 +33,78 @@ import { useArticle } from "./article-context";
 interface VersionCardProps {
   version: number;
   headline: string | null;
+  blobOutline: string;
   createdAt: Date;
   isActive: boolean;
   onClick: () => void;
+}
+
+/* ==========================================================================*/
+// Helper Components
+/* ==========================================================================*/
+
+interface VersionTooltipProps {
+  headline: string | null;
+  blobOutline: string;
+  children: React.ReactNode;
+}
+
+/** Reusable tooltip for version cards displaying headline and blob outline */
+function VersionTooltip({ headline, blobOutline, children }: VersionTooltipProps) {
+  // Format blob outline into bullet points
+  const formatBlobOutline = (outline: string) => {
+    if (!outline) return [];
+    
+    // Split by common delimiters and filter out empty lines
+    const points = outline
+      .split(/[•\n\r]+/)
+      .map(point => point.trim())
+      .filter(point => point.length > 0);
+    
+    return points;
+  };
+
+  const blobPoints = formatBlobOutline(blobOutline);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent 
+        side="right" 
+        sideOffset={8}
+        className="max-w-lg bg-card text-foreground border border-gray-200 shadow-lg py-4 px-8"
+      >
+        <div className="space-y-2">
+          {headline && (
+            <div>
+              <p className="font-medium mb-1 text-sm">Headline:</p>
+              <p className="text-gray-700 text-sm">{headline}</p>
+            </div>
+          )}
+          
+
+          {blobPoints.length > 0 && (
+            <>
+            <Separator />
+            <div>
+              <p className="font-medium mb-2 text-sm">Blob Outline:</p>
+              <ul className="space-y-1.5">
+                {blobPoints.map((point, index) => (
+                  <li key={index} className="text-gray-700 flex items-start text-sm">
+                    <span className="mr-2 mt-2 h-1 w-1 bg-gray-500 rounded-full flex-shrink-0"></span>
+                    <span className="whitespace-normal break-words">{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            </>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 /* ==========================================================================*/
@@ -46,7 +117,7 @@ interface VersionCardProps {
  * Displays individual version information with version number, headline, and timestamp.
  * Shows active state for current version and handles click to switch versions.
  */
-function VersionCard({ version, headline, createdAt, isActive, onClick }: VersionCardProps) {
+function VersionCard({ version, headline,blobOutline, createdAt, isActive, onClick }: VersionCardProps) {
   const formattedDate = createdAt.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric", 
@@ -54,37 +125,39 @@ function VersionCard({ version, headline, createdAt, isActive, onClick }: Versio
   });
 
   return (
-    <div 
-      className={`group p-4 border rounded-lg bg-card hover:bg-accent cursor-pointer transition-colors duration-200 border-l-4 ${
-        isActive 
-          ? 'border-l-blue-500 bg-accent' 
-          : 'border-l-blue-500/20 hover:border-l-blue-500/40'
-      }`}
-      onClick={onClick}
-    >
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-medium px-2 py-1 rounded ${
-              isActive 
-                ? 'text-primary-foreground bg-primary' 
-                : 'text-primary bg-primary/10'
-            }`}>
-              v{version}
-            </span>
+    <VersionTooltip headline={headline} blobOutline={blobOutline}>
+      <div 
+        className={`group p-4 border rounded-lg bg-card hover:bg-accent cursor-pointer transition-colors duration-200 border-l-4 ${
+          isActive 
+            ? 'border-l-blue-500 bg-accent' 
+            : 'border-l-blue-500/20 hover:border-l-blue-500/40'
+        }`}
+        onClick={onClick}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium px-2 py-1 rounded ${
+                isActive 
+                  ? 'text-primary-foreground bg-primary' 
+                  : 'text-primary bg-primary/10'
+              }`}>
+                v{version}
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {formattedDate}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {formattedDate}
+          
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-relaxed group-hover:text-foreground line-clamp-2">
+              {headline || "No headline"}
+            </p>
           </div>
-        </div>
-        
-        <div className="space-y-1">
-          <p className="text-sm font-medium leading-relaxed group-hover:text-foreground line-clamp-2">
-            {headline || "No headline"}
-          </p>
         </div>
       </div>
-    </div>
+    </VersionTooltip>
   );
 }
 
@@ -98,12 +171,10 @@ function Versions() {
   const router = useRouter();
   const { versionMetadata, currentVersion, setCurrentVersion, currentArticle } = useArticle();
   
-  // Navigate when version changes
-  React.useEffect(() => {
-    if (currentArticle) {
-      router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${currentVersion}`);
-    }
-  }, [currentVersion, currentArticle?.slug, router, currentArticle]);
+  // Note: Router navigation is handled by the version card click handlers, not in useEffect
+  // The previous useEffect with router.push was causing infinite loops
+
+  console.log(versionMetadata[0].blobOutline)
   
   return (
     <div className="h-full flex flex-col">
@@ -127,9 +198,16 @@ function Versions() {
               key={versionData.version}
               version={versionData.version}
               headline={versionData.headline}
+              blobOutline={versionData.blobOutline || ""}
               createdAt={versionData.createdAt}
               isActive={versionData.version === currentVersion}
-              onClick={() => setCurrentVersion(versionData.version)}
+              onClick={() => {
+                // Only navigate if we're switching to a different version
+                if (versionData.version !== currentVersion && currentArticle) {
+                  router.push(`/article?slug=${encodeURIComponent(currentArticle.slug)}&version=${versionData.version}`);
+                }
+                setCurrentVersion(versionData.version);
+              }}
             />
           ))}
         </div>

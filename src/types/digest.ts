@@ -160,9 +160,14 @@ export interface Step04WriteArticleOutlineResponse extends BaseStepResponse {
 /** Request for step 5 - write article */
 export interface Step05WriteArticleRequest {
   length: LengthRange;
+
+  // Source Info
   sourceAccredit: string;
   sourceDescription: string;
   sourceText: string;
+  isPrimarySource: boolean;
+
+  // Editor Instructions
   instructions: string;
 
   // Accumulated context from previous steps
@@ -224,6 +229,19 @@ export interface Step07SentencePerLineAttributionResponse extends BaseStepRespon
   formattedArticle: string;
 }
 
+
+// ==========================================================================
+// Verbatim Step
+// ==========================================================================
+
+export interface StepVerbatimRequest {
+  sourceText: string;
+}
+
+export interface StepVerbatimResponse extends BaseStepResponse {
+  formattedArticle: string;
+}
+
 /* ==========================================================================*/
 // Pipeline Response
 /* ==========================================================================*/
@@ -238,4 +256,5 @@ export interface PipelineResponse {
   step_five_write_article?: Step05WriteArticleResponse;
   step_six_paraphrase_article?: Step06ParaphraseArticleResponse;
   step_seven_sentence_per_line_attribution?: Step07SentencePerLineAttributionResponse;
+  verbatim_step?: StepVerbatimResponse;
 }

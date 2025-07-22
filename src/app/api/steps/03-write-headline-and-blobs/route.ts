@@ -28,8 +28,8 @@ import { anthropic } from "@ai-sdk/anthropic";
 // Configuration
 /* ==========================================================================*/
 
-const structuredModel = openai("gpt-4o-mini");
-const model = anthropic("claude-3-opus-20240229");
+const structuredModel = openai("gpt-4o");
+const model = anthropic("claude-3-5-sonnet-20240620");
 // const model = openai("gpt-4.1");
 
 /* ==========================================================================*/
@@ -124,16 +124,16 @@ Blob: [insert blob]
 Blob: [insert blob]
 `;
 
+
 const USER_PROMPT = `
 Number of Blobs: {{num_blobs}}
-{{manual_headline_block}}
 
 IMPORTANT EDITOR NOTES:  
 {{editor_notes}}
 
 Additional editor instructions:
-Each blob MUST start with a different word. 
-Dial up the tabloid and voyeuristic nature of the writing, but use casual, easy to understand information.
+Each blob MUST start with a different word.
+Dial up the tabloid and voyeuristic nature of the writing, but use casual, easy to understand information. Avoid slang.
 The blobs must be short, punchy, and written in a newsy style (not dry)
 Make sure to include the author or context of the source article in the first blob. (Eg, "... in a piece by X author in Y publication")
 Even if the input is hard science, a dry court ruling, or another dense text, the headline and blobs MUST be written in pithy, easy‑to‑understand english. For example, instead of "In a groundbreaking judgement addressing the multifaceted elements of electric vehicles, a Michigan court declared that..." just write "A Michigan court ruled X" 
@@ -172,7 +172,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve dynamic pieces for the user prompt
-    const manualHeadlineBlock = body.headline ? `Manual Headline (you must use this headline):\n${body.headline}` : "";
 
     // Build prompts using the helper function
     const [systemPrompt, userPrompt] = buildPrompts(
@@ -181,7 +180,6 @@ export async function POST(request: NextRequest) {
       undefined, // No system variables needed
       {
         num_blobs: body.blobs.toString(),
-        manual_headline_block: manualHeadlineBlock,
         editor_notes: body.instructions,
         source_accredit: body.sourceAccredit || "",
         source_description: body.sourceDescription || "",
@@ -209,7 +207,8 @@ export async function POST(request: NextRequest) {
           content: `Here is the attention-grabbing headline and the ${body.blobs} requested blobs based on the input and editor instructions. These magnetic blobs are only 10-20 words long and are written in zippy plain-english.`
         }
       ],
-      temperature: 0.4,
+      temperature: 0.45,
+      maxTokens: 500,
     });
 
     console.log("generated raw headline and blobs", rawHeadlineAndBlobs);
@@ -224,6 +223,8 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("structured headline and blobs", structuredHeadlineAndBlobs);
+
+    logger.logStepResponse(3, "Write Headline and Blobs", structuredHeadlineAndBlobs);
 
     // process.exit(0);
 
