@@ -80,6 +80,16 @@ export async function createUser(payload: Omit<NewUser, "id" | "createdAt" | "up
 }
 
 /**
+ * Insert a new user with a specific ID (for Supabase Auth integration).
+ * @param payload Partial user record including `id`. `createdAt`, `updatedAt` are auto-filled.
+ * @returns Inserted row.
+ */
+export async function createUserWithId(payload: Omit<NewUser, "createdAt" | "updatedAt">): Promise<User> {
+  const [row] = await db.insert(users).values(payload).returning();
+  return row;
+}
+
+/**
  * Fetch a single user by UUID.
  */
 export async function getUser(id: string): Promise<User | undefined> {
