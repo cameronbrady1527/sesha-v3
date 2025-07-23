@@ -81,7 +81,7 @@ export function NavigationActions({ user }: NavigationActionsProps) {
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg" align="start" side={isMobile ? "bottom" : "bottom"} sideOffset={4}>
-            {user.role === 'member' && (
+            {user.role === 'admin' && (
               <DropdownMenuItem className="gap-2 p-2 cursor-pointer" onClick={handleCopyInviteLink}>
                 <div className={`flex size-6 items-center justify-center rounded-md border bg-transparent transition-all duration-200 ${isCopied ? 'bg-green-100 border-green-300' : ''}`}>
                   {isCopied ? (
