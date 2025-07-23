@@ -14,7 +14,7 @@
 import "server-only";
 
 // Local Database ----
-import { getArticleById, updateArticleStatus } from "@/db/dal";
+import { getArticleById, updateArticleStatus, createRun, updateRun } from "@/db/dal";
 
 // Local Pipeline Functions ----
 import { runDigestPipeline } from "./digest";
@@ -227,8 +227,22 @@ async function executePipelineByArticleId(articleId: string): Promise<PipelineEx
       // Build digest request from article data
       const digestRequest = buildDigestRequestFromArticle(article);
 
+      // Create run record
+      const run = await createRun({
+        articleId: articleId,
+        userId: article.createdBy || "",
+        sourceType: article.sourceType,
+        length: article.inputPresetLength,
+        costUsd: "0",
+        inputTokensUsed: 0,
+        outputTokensUsed: 0,
+      });
+
       // Execute digest pipeline
       const result = await runDigestPipeline(articleId, digestRequest);
+
+      // Update run record with usage data
+      await updateRun(run.id, result.costUsd, result.totalInputTokens, result.totalOutputTokens);
 
       return {
         success: result.success,
@@ -240,8 +254,22 @@ async function executePipelineByArticleId(articleId: string): Promise<PipelineEx
       // Build aggregate request from article data
       const aggregateRequest = buildAggregateRequestFromArticle(article);
 
+      // Create run record
+      const run = await createRun({
+        articleId: articleId,
+        userId: article.createdBy || "",
+        sourceType: article.sourceType,
+        length: article.inputPresetLength,
+        costUsd: "0",
+        inputTokensUsed: 0,
+        outputTokensUsed: 0,
+      });
+
       // Execute aggregate pipeline
       const result = await runAggregatePipeline(articleId, aggregateRequest);
+
+      // Update run record with usage data
+      await updateRun(run.id, result.costUsd, result.totalInputTokens, result.totalOutputTokens);
 
       return {
         success: result.success,

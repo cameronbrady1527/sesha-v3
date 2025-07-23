@@ -306,13 +306,12 @@ async function processSourcesInParallel(sources: Source[], logger?: PipelineLogg
   const processingPromises = sources.map(async (source, index) => {
     // Determine which prompts to use based on source properties
 
-
     // Format System Prompt ------
     const finalSystemPrompt = formatPrompt2(SYSTEM_PROMPT, { date: currentDate }, PromptType.SYSTEM);
-    
+
     // Format User Prompt ------
     const finalUserPrompt = formatPrompt2(USER_PROMPT, { source, date: currentDate }, PromptType.USER);
-    
+
     // Format Assistant Prompt ------
     const finalAssistantPrompt = formatPrompt2(ASSISTANT_PROMPT, { source }, PromptType.ASSISTANT);
 
@@ -322,7 +321,7 @@ async function processSourcesInParallel(sources: Source[], logger?: PipelineLogg
     }
 
     // Generate text for this source using messages approach
-    const { text: content } = await generateText({
+    const { text: content, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -342,6 +341,14 @@ async function processSourcesInParallel(sources: Source[], logger?: PipelineLogg
     return {
       ...source,
       factsBitSplitting1: content,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage,
+        },
+      ],
     };
   });
 
@@ -368,7 +375,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step01-${Date.now()}`, 'aggregate');
+    const logger = createPipelineLogger(`route-step01-${Date.now()}`, "aggregate");
 
     // Process all sources in parallel
     const processedSources = await processSourcesInParallel(body.sources, logger);
