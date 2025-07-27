@@ -1,6 +1,6 @@
-import { ArticleEmailExport } from '@/components/email/article-email-export';
 import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
+import { ArticleComplete } from '@/components/email/article-complete';
 
 // ==========================================================================
 // Configuration
@@ -64,16 +64,12 @@ export async function POST(request: NextRequest) {
       from: 'updates@updates.sesha-systems.com',
       to: body.to,
       subject: body.subject,
-      react: ArticleEmailExport({ 
-        recipientName: 'User', // We don't have recipient name from the form
-        senderName: body.name,
-        articleHeadline: body.subject,
-        articleSlug: body.slug,
+      react: ArticleComplete({
+        name: body.name,
+        slug: body.slug,
+        version: body.version,
         versionDecimal: body.versionDecimal,
         href: body.href,
-        content: body.content,
-        articleHtml: body.articleHtml,
-        blobs: body.blobs
       }),
     });
 
