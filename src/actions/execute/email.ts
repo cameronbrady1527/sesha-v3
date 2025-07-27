@@ -74,6 +74,7 @@ export async function sendCompletionEmail(
         slug: slug,
         version: version,
         versionDecimal: versionDecimal,
+        emailType: 'completion',
       }),
     });
 

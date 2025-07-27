@@ -44,6 +44,7 @@ export interface EmailExportData {
   content?: string;
   articleHtml?: string;
   blobs?: string;
+  emailType?: 'completion' | 'export';
 }
 
 export interface DocxExportData {
@@ -197,6 +198,7 @@ async function sendArticleEmail(article: ArticleData, recipients: string[], cust
     content: customContent?.trim(),
     articleHtml: articleHtml,
     blobs: article.blob || undefined,
+    emailType: 'export',
   };
 
   const response = await fetch("/api/send", {
