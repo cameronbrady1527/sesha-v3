@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
-import { createUser } from "@/db/dal";
+import { createUserWithId } from "@/db/dal";
 
 /* ==========================================================================*/
 /* Types */
@@ -114,7 +114,8 @@ export async function signup(
 
   // Create user record in our database
   try {
-    await createUser({
+    await createUserWithId({
+      id: authData.user.id,
       email,
       firstName,
       lastName,

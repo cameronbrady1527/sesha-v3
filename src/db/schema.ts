@@ -24,7 +24,6 @@ export const articleStatusEnum = pgEnum("article_status", ["pending", "started",
 // Re-used enumerations
 export const blobsEnum = pgEnum("blobs", ["1", "2", "3", "4", "5", "6"]);
 export const lengthEnum = pgEnum("length", ["100-250", "400-550", "700-850", "1000-1200"]);
-export const runTypeEnum = pgEnum("run_type", ["digest"]);
 
 // Source type
 export const sourceTypeEnum = pgEnum("source_type", ["single", "multi"]);
@@ -190,14 +189,16 @@ export const runs = pgTable(
     userId: uuid("user_id").references(() => users.id),
 
     // What kind of run generated this cost?
-    runType: runTypeEnum("run_type").notNull(),
+    sourceType: sourceTypeEnum("source_type").notNull(),
 
     // Snapshot fields for grouping
     length: lengthEnum("length").notNull(),
 
     // Financial / usage metrics
     costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull(),
-    tokensUsed: integer("tokens_used"),
+    inputTokensUsed: integer("input_tokens_used"),
+    outputTokensUsed: integer("output_tokens_used"),
+    // tokensUsed: integer("tokens_used"),
 
     // Timestamp for date-range filtering
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -274,5 +275,4 @@ export type UserRole = (typeof userRoleEnum.enumValues)[number];
 export type ArticleStatus = (typeof articleStatusEnum.enumValues)[number];
 export type BlobsCount = (typeof blobsEnum.enumValues)[number];
 export type LengthRange = (typeof lengthEnum.enumValues)[number];
-export type RunType = (typeof runTypeEnum.enumValues)[number];
 export type SourceType = (typeof sourceTypeEnum.enumValues)[number];

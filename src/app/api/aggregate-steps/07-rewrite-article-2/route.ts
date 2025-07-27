@@ -129,20 +129,17 @@ export async function POST(request: NextRequest) {
     const body: Step07RewriteArticle2Request = await request.json();
 
     // Validate required fields ------
-    const validationError = validateRequest(
-      Boolean(body.articleStepOutputs?.rewriteArticle?.text), 
-      {
-        rewrittenArticle: "",
-      } as Step07RewriteArticle2AIResponse
-    );
+    const validationError = validateRequest(Boolean(body.articleStepOutputs?.rewriteArticle?.text), {
+      rewrittenArticle: "",
+    } as Step07RewriteArticle2AIResponse);
     if (validationError) return validationError;
 
     // Format System Prompt ------
     const finalSystemPrompt = formatPrompt2(
       SYSTEM_PROMPT,
-      { 
+      {
         sources: body.sources,
-        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || "",
       },
       PromptType.SYSTEM
     );
@@ -150,9 +147,9 @@ export async function POST(request: NextRequest) {
     // Format User Prompt ------
     const finalUserPrompt = formatPrompt2(
       USER_PROMPT,
-      { 
+      {
         sources: body.sources,
-        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || "",
       },
       PromptType.USER
     );
@@ -160,19 +157,19 @@ export async function POST(request: NextRequest) {
     // Format Assistant Prompt ------
     const finalAssistantPrompt = formatPrompt2(
       ASSISTANT_PROMPT,
-      { 
+      {
         sources: body.sources,
-        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || ""
+        rewrittenArticle: body.articleStepOutputs.rewriteArticle?.text || "",
       },
       PromptType.ASSISTANT
     );
 
     // Create a route-specific logger for this step
-    const logger = createPipelineLogger(`route-step07-${Date.now()}`, 'aggregate');
+    const logger = createPipelineLogger(`route-step07-${Date.now()}`, "aggregate");
     logger.logStepPrompts(7, "Rewrite Article 2", finalSystemPrompt, finalUserPrompt, finalAssistantPrompt);
 
     // Generate text using messages approach
-    const { text: rewrittenArticle } = await generateText({
+    const { text: rewrittenArticle, usage } = await generateText({
       model: MODEL,
       system: finalSystemPrompt,
       messages: [
@@ -192,6 +189,14 @@ export async function POST(request: NextRequest) {
     // Build response
     const response: Step07RewriteArticle2AIResponse = {
       rewrittenArticle,
+      usage: [
+        {
+          inputTokens: usage?.promptTokens ?? 0,
+          outputTokens: usage?.completionTokens ?? 0,
+          model: MODEL.modelId,
+          ...usage,
+        },
+      ],
     };
 
     logger.logStepResponse(7, "Rewrite Article 2", response);
@@ -205,6 +210,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse: Step07RewriteArticle2AIResponse = {
       rewrittenArticle: "",
+      usage: [],
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

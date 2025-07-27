@@ -58,6 +58,12 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
   let article: Article;
 
   try {
+
+    const user = await getAuthenticatedUserServer();
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
     // Clean the slug before processing
     const originalSlug = request.slug;
     const cleanedSlug = cleanSlug(request.slug);
@@ -98,7 +104,12 @@ export async function createArticleFromRequest(request: DigestRequest | Aggregat
 
     // Build unified request for createArticleRecord
     const cleanedRequest = {
-      metadata: request.metadata,
+      metadata: {
+        userId: user.id,
+        orgId: user.orgId.toString(),
+        currentVersion: request.metadata.currentVersion,
+        currentVersionDecimal: request.metadata.currentVersionDecimal,
+      },
       slug: cleanedSlug,
       headline: request.headline,
       sources: sources,

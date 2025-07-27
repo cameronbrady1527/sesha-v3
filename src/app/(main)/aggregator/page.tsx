@@ -18,6 +18,12 @@ import React from "react";
 import { getArticleByOrgSlugVersion, getOrgPresets } from "@/db/dal";
 import type { Article } from "@/db/schema";
 
+// Auth helpers ---------------------------------------------------------------
+import { getAuthenticatedUserServer } from "@/lib/supabase/server";
+
+// Next.js helpers ------------------------------------------------------------
+import { redirect } from "next/navigation";
+
 // Shared UI Components -------------------------------------------------------
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
@@ -172,7 +178,11 @@ function buildInitialStateFromInputs(inputs: Article, orgId: number = 1, current
 async function Aggregator2Page({ searchParams }: { searchParams: Promise<{ slug?: string; version?: string }> }) {
   /* ------------------------- 1. Parse URL params ----------------------- */
   const { slug, version } = await searchParams;
-  const ORG_ID = 1; // <-- replace w/ auth session later
+  const user = await getAuthenticatedUserServer();
+  if (!user) {
+    redirect("/login");
+  }
+  const ORG_ID = user.orgId;
 
   /* ------------------------- 2. Fetch presets (always) ------------------ */
   const presets = await getOrgPresets(ORG_ID);
