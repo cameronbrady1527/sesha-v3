@@ -67,7 +67,6 @@ export async function POST(request: NextRequest) {
       react: ArticleComplete({
         name: body.name,
         slug: body.slug,
-        version: body.version,
         versionDecimal: body.versionDecimal,
         href: body.href,
       }),

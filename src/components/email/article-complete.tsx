@@ -18,7 +18,6 @@ import * as React from "react";
 interface ArticleCompleteProps {
   name: string;
   slug: string;
-  version: number;
   versionDecimal: string;
   href: string;
 }
@@ -27,7 +26,7 @@ interface ArticleCompleteProps {
 // Component
 /* ==========================================================================*/
 
-export function ArticleComplete({ name, slug, version, versionDecimal, href }: ArticleCompleteProps) {
+export function ArticleComplete({ name, slug, versionDecimal, href }: ArticleCompleteProps) {
   return (
     <div style={{
       maxWidth: '600px',
