@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         articleHeadline: body.subject,
         articleSlug: body.slug,
         versionDecimal: body.versionDecimal,
+        href: body.href,
         content: body.content,
         articleHtml: body.articleHtml,
         blobs: body.blobs
