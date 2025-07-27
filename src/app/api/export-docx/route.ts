@@ -1,13 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Document, Packer, Paragraph, TextRun, AlignmentType, UnderlineType, Footer, SimpleField } from "docx";
-import * as cheerio from "cheerio";
-
-// Use simpler typing for cheerio - the runtime works perfectly
-type CheerioSelection = cheerio.Cheerio<any>;
 
 /* ==========================================================================*/
 // Types
 /* ==========================================================================*/
+
+// Lexical node types
+interface LexicalTextNode {
+  type: 'text';
+  text: string;
+  format?: number;
+  style?: string;
+}
+
+interface LexicalParagraphNode {
+  type: 'paragraph';
+  children?: LexicalNode[];
+}
+
+interface LexicalHeadingNode {
+  type: 'heading';
+  tag?: string;
+  children?: LexicalNode[];
+}
+
+interface LexicalQuoteNode {
+  type: 'quote';
+  children?: LexicalNode[];
+}
+
+interface LexicalListNode {
+  type: 'list';
+  listType?: 'bullet' | 'number' | 'check';
+  children?: LexicalNode[];
+}
+
+interface LexicalListItemNode {
+  type: 'listitem';
+  checked?: boolean;
+  children?: LexicalNode[];
+}
+
+type LexicalNode = LexicalTextNode | LexicalParagraphNode | LexicalHeadingNode | LexicalQuoteNode | LexicalListNode | LexicalListItemNode;
+
+interface LexicalRoot {
+  root: {
+    children?: LexicalNode[];
+  };
+}
 
 interface ExportDocxRequest {
   richContent: string; // Lexical JSON content - always required
@@ -307,11 +347,11 @@ function parseLexicalJsonToParagraphs(richContentJson: string): Paragraph[] {
   if (!richContentJson) return [];
 
   try {
-    const lexicalData = JSON.parse(richContentJson);
+    const lexicalData = JSON.parse(richContentJson) as LexicalRoot;
     const paragraphs: Paragraph[] = [];
 
     // Process each node in the root
-    lexicalData.root?.children?.forEach((node: any, index: number) => {
+    lexicalData.root?.children?.forEach((node: LexicalNode) => {
       switch (node.type) {
         case 'paragraph':
           paragraphs.push(...processParagraphNode(node));
@@ -329,7 +369,7 @@ function parseLexicalJsonToParagraphs(richContentJson: string): Paragraph[] {
           paragraphs.push(...processListItemNode(node));
           break;
         default:
-          paragraphs.push(...processParagraphNode(node));
+          // For unknown node types, skip them
           break;
       }
     });
@@ -346,14 +386,15 @@ function parseLexicalJsonToParagraphs(richContentJson: string): Paragraph[] {
  * 
  * Processes a paragraph node and returns DocX paragraphs
  */
-function processParagraphNode(paragraphNode: any): Paragraph[] {
+function processParagraphNode(paragraphNode: LexicalParagraphNode): Paragraph[] {
   const textRuns: TextRun[] = [];
 
   // Process each text node in the paragraph
-  paragraphNode.children?.forEach((textNode: any) => {
+  paragraphNode.children?.forEach((textNode: LexicalNode) => {
     if (textNode.type === 'text') {
+      const textNodeTyped = textNode as LexicalTextNode;
       // Extract formatting from Lexical format field
-      const format = textNode.format || 0;
+      const format = textNodeTyped.format || 0;
       const isBold = (format & 1) !== 0;      // Bold
       const isItalic = (format & 2) !== 0;    // Italic  
       const isUnderline = (format & 8) !== 0; // Underline (bit 8)
@@ -361,8 +402,8 @@ function processParagraphNode(paragraphNode: any): Paragraph[] {
 
       // Extract color from style attribute
       let color = "000000"; // Default black
-      if (textNode.style) {
-        const colorMatch = textNode.style.match(/color:\s*([^;]+)/i);
+      if (textNodeTyped.style) {
+        const colorMatch = textNodeTyped.style.match(/color:\s*([^;]+)/i);
         if (colorMatch) {
           const colorValue = colorMatch[1].trim();
           color = convertColorToHex(colorValue);
@@ -371,7 +412,7 @@ function processParagraphNode(paragraphNode: any): Paragraph[] {
 
       // Create TextRun with all formatting
       const textRun = new TextRun({
-        text: textNode.text || "",
+        text: textNodeTyped.text || "",
         font: "Times New Roman",
         size: 24,
         color: color,
@@ -406,23 +447,24 @@ function processParagraphNode(paragraphNode: any): Paragraph[] {
  * 
  * Processes a heading node and returns DocX paragraphs
  */
-function processHeadingNode(headingNode: any): Paragraph[] {
+function processHeadingNode(headingNode: LexicalHeadingNode): Paragraph[] {
   const textRuns: TextRun[] = [];
   const level = headingNode.tag || 'h1'; // Default to h1 if no tag specified
 
   // Process each text node in the heading
-  headingNode.children?.forEach((textNode: any) => {
+  headingNode.children?.forEach((textNode: LexicalNode) => {
     if (textNode.type === 'text') {
+      const textNodeTyped = textNode as LexicalTextNode;
       // Extract formatting and color (same as paragraph)
-      const format = textNode.format || 0;
+      const format = textNodeTyped.format || 0;
       const isBold = (format & 1) !== 0;
       const isItalic = (format & 2) !== 0;
       const isUnderline = (format & 8) !== 0; // Underline (bit 8)
       const isStrikethrough = (format & 4) !== 0; // Strikethrough (bit 4)
 
       let color = "000000";
-      if (textNode.style) {
-        const colorMatch = textNode.style.match(/color:\s*([^;]+)/i);
+      if (textNodeTyped.style) {
+        const colorMatch = textNodeTyped.style.match(/color:\s*([^;]+)/i);
         if (colorMatch) {
           const colorValue = colorMatch[1].trim();
           color = convertColorToHex(colorValue);
@@ -441,7 +483,7 @@ function processHeadingNode(headingNode: any): Paragraph[] {
       }
 
       const textRun = new TextRun({
-        text: textNode.text || "",
+        text: textNodeTyped.text || "",
         font: "Times New Roman",
         size: fontSize,
         color: color,
@@ -475,22 +517,23 @@ function processHeadingNode(headingNode: any): Paragraph[] {
  * 
  * Processes a quote node and returns DocX paragraphs
  */
-function processQuoteNode(quoteNode: any): Paragraph[] {
+function processQuoteNode(quoteNode: LexicalQuoteNode): Paragraph[] {
   const textRuns: TextRun[] = [];
 
   // Process each text node in the quote
-  quoteNode.children?.forEach((textNode: any) => {
+  quoteNode.children?.forEach((textNode: LexicalNode) => {
     if (textNode.type === 'text') {
+      const textNodeTyped = textNode as LexicalTextNode;
       // Extract formatting and color (same as paragraph)
-      const format = textNode.format || 0;
+      const format = textNodeTyped.format || 0;
       const isBold = (format & 1) !== 0;
       const isItalic = (format & 2) !== 0;
       const isUnderline = (format & 8) !== 0; // Underline (bit 8)
       const isStrikethrough = (format & 4) !== 0; // Strikethrough (bit 4)
 
       let color = "000000";
-      if (textNode.style) {
-        const colorMatch = textNode.style.match(/color:\s*([^;]+)/i);
+      if (textNodeTyped.style) {
+        const colorMatch = textNodeTyped.style.match(/color:\s*([^;]+)/i);
         if (colorMatch) {
           const colorValue = colorMatch[1].trim();
           color = convertColorToHex(colorValue);
@@ -498,7 +541,7 @@ function processQuoteNode(quoteNode: any): Paragraph[] {
       }
 
       const textRun = new TextRun({
-        text: textNode.text || "",
+        text: textNodeTyped.text || "",
         font: "Times New Roman",
         size: 24,
         color: color,
@@ -536,12 +579,12 @@ function processQuoteNode(quoteNode: any): Paragraph[] {
  * 
  * Processes a list node and returns DocX paragraphs
  */
-function processListNode(listNode: any): Paragraph[] {
+function processListNode(listNode: LexicalListNode): Paragraph[] {
   const paragraphs: Paragraph[] = [];
   const listType = listNode.listType || 'bullet'; // bullet, number, check
 
   // Process each list item
-  listNode.children?.forEach((listItemNode: any, index: number) => {
+  listNode.children?.forEach((listItemNode: LexicalNode, index: number) => {
     if (listItemNode.type === 'listitem') {
       const listItemParagraphs = processListItemNode(listItemNode, listType, index + 1);
       paragraphs.push(...listItemParagraphs);
@@ -556,22 +599,23 @@ function processListNode(listNode: any): Paragraph[] {
  * 
  * Processes a list item node and returns DocX paragraphs
  */
-function processListItemNode(listItemNode: any, listType: string = 'bullet', itemNumber: number = 1): Paragraph[] {
+function processListItemNode(listItemNode: LexicalListItemNode, listType: string = 'bullet', itemNumber: number = 1): Paragraph[] {
   const textRuns: TextRun[] = [];
 
   // Process each text node in the list item
-  listItemNode.children?.forEach((textNode: any) => {
+  listItemNode.children?.forEach((textNode: LexicalNode) => {
     if (textNode.type === 'text') {
+      const textNodeTyped = textNode as LexicalTextNode;
       // Extract formatting and color (same as paragraph)
-      const format = textNode.format || 0;
+      const format = textNodeTyped.format || 0;
       const isBold = (format & 1) !== 0;
       const isItalic = (format & 2) !== 0;
       const isUnderline = (format & 8) !== 0; // Underline (bit 8)
       const isStrikethrough = (format & 4) !== 0; // Strikethrough (bit 4)
 
       let color = "000000";
-      if (textNode.style) {
-        const colorMatch = textNode.style.match(/color:\s*([^;]+)/i);
+      if (textNodeTyped.style) {
+        const colorMatch = textNodeTyped.style.match(/color:\s*([^;]+)/i);
         if (colorMatch) {
           const colorValue = colorMatch[1].trim();
           color = convertColorToHex(colorValue);
@@ -579,7 +623,7 @@ function processListItemNode(listItemNode: any, listType: string = 'bullet', ite
       }
 
       const textRun = new TextRun({
-        text: textNode.text || "",
+        text: textNodeTyped.text || "",
         font: "Times New Roman",
         size: 24,
         color: color,
